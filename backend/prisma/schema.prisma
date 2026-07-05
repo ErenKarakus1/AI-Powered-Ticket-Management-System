@@ -33,6 +33,7 @@ model User {
   passwordHash String
   role         UserRole @default(USER)
   tickets      Ticket[]
+  messages     TicketMessage[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -46,6 +47,7 @@ model Ticket {
   userId      String         @db.Uuid
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   analysis    TicketAnalysis?
+  messages    TicketMessage[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -62,4 +64,18 @@ model TicketAnalysis {
   summary   String
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+}
+
+model TicketMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @db.Uuid
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId  String   @db.Uuid
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ticketId])
+  @@index([senderId])
 }

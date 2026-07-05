@@ -284,6 +284,61 @@ dd {
   font-weight: 800;
 }
 
+.messages {
+  border-top: 1px solid #edf1f5;
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.messages h3 {
+  font-size: 15px;
+  margin-bottom: 0;
+}
+
+.messageList {
+  display: grid;
+  gap: 10px;
+}
+
+.messageItem {
+  background: #f8fafc;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.messageItem div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.messageItem span {
+  background: #edf4ff;
+  border-radius: 999px;
+  color: #1746b4;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 8px;
+}
+
+.messageItem p {
+  margin-bottom: 0;
+}
+
+.messageItem small {
+  color: #667085;
+}
+
+.messageForm {
+  display: grid;
+  gap: 10px;
+}
+
 @media (max-width: 1100px) {
   .workspace {
     grid-template-columns: 1fr 1fr;

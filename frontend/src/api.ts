@@ -35,6 +35,21 @@ export type Ticket = {
   } | null;
 };
 
+export type TicketMessage = {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  sender: {
+    id: string;
+    name: string;
+    email: string;
+    role: "USER" | "ADMIN";
+  };
+};
+
 export type AuthResponse = {
   user: User;
   token: string;
@@ -111,5 +126,33 @@ export const updateAdminTicketStatus = (token: string, id: string, status: Ticke
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify({ status })
+  });
+};
+
+export const listTicketMessages = (token: string, id: string) => {
+  return request<{ messages: TicketMessage[] }>(`/tickets/${id}/messages`, {
+    headers: authHeaders(token)
+  });
+};
+
+export const createTicketMessage = (token: string, id: string, body: string) => {
+  return request<{ message: TicketMessage }>(`/tickets/${id}/messages`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ body })
+  });
+};
+
+export const listAdminTicketMessages = (token: string, id: string) => {
+  return request<{ messages: TicketMessage[] }>(`/admin/tickets/${id}/messages`, {
+    headers: authHeaders(token)
+  });
+};
+
+export const createAdminTicketMessage = (token: string, id: string, body: string) => {
+  return request<{ message: TicketMessage }>(`/admin/tickets/${id}/messages`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ body })
   });
 };

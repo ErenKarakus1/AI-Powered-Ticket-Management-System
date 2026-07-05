@@ -3,9 +3,14 @@ import { createRoot } from "react-dom/client";
 import {
   AuthResponse,
   Ticket,
+  TicketMessage,
   TicketStatus,
+  createAdminTicketMessage,
   createTicket,
+  createTicketMessage,
+  listAdminTicketMessages,
   listAdminTickets,
+  listTicketMessages,
   listTickets,
   login,
   register,
@@ -83,6 +88,8 @@ function App() {
   const [adminTickets, setAdminTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [message, setMessage] = useState("");
+  const [ticketMessages, setTicketMessages] = useState<TicketMessage[]>([]);
+  const [messageBody, setMessageBody] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ticketStatusFilter, setTicketStatusFilter] = useState<StatusFilter>("ALL");
@@ -143,6 +150,18 @@ function App() {
     setAdminTickets(result.tickets);
   };
 
+  const loadMessages = async (ticketId: string, token = auth?.token, admin = isAdmin) => {
+    if (!token) {
+      return;
+    }
+
+    const result = admin
+      ? await listAdminTicketMessages(token, ticketId)
+      : await listTicketMessages(token, ticketId);
+
+    setTicketMessages(result.messages);
+  };
+
   useEffect(() => {
     if (!auth) {
       setTickets([]);
@@ -161,6 +180,17 @@ function App() {
     setAdminTickets([]);
     void loadTickets(auth.token).catch((err: Error) => showError(err.message));
   }, [auth]);
+
+  useEffect(() => {
+    if (!auth || !selectedFromLatestData) {
+      setTicketMessages([]);
+      return;
+    }
+
+    void loadMessages(selectedFromLatestData.id, auth.token, auth.user.role === "ADMIN").catch(
+      (err: Error) => showError(err.message)
+    );
+  }, [auth, selectedFromLatestData?.id]);
 
   const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -225,6 +255,30 @@ function App() {
       showMessage("Ticket status updated");
     } catch (err) {
       showError(err instanceof Error ? err.message : "Status update failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!auth || !selectedFromLatestData) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = isAdmin
+        ? await createAdminTicketMessage(auth.token, selectedFromLatestData.id, messageBody)
+        : await createTicketMessage(auth.token, selectedFromLatestData.id, messageBody);
+
+      setTicketMessages((currentMessages) => [...currentMessages, result.message]);
+      setMessageBody("");
+      showMessage("Message sent");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Message could not be sent");
     } finally {
       setLoading(false);
     }
@@ -356,8 +410,12 @@ function App() {
           <div className="column">
             <TicketDetail
               ticket={selectedFromLatestData}
+              messages={ticketMessages}
+              messageBody={messageBody}
               isAdminView={isAdmin && Boolean(selectedFromLatestData?.user)}
               onStatusChange={handleStatusChange}
+              onMessageBodyChange={setMessageBody}
+              onMessageSubmit={handleCreateMessage}
               loading={loading}
             />
           </div>
@@ -426,13 +484,21 @@ function TicketList({
 
 function TicketDetail({
   ticket,
+  messages,
+  messageBody,
   isAdminView,
   onStatusChange,
+  onMessageBodyChange,
+  onMessageSubmit,
   loading
 }: {
   ticket: Ticket | null;
+  messages: TicketMessage[];
+  messageBody: string;
   isAdminView: boolean;
   onStatusChange: (ticketId: string, status: TicketStatus) => void;
+  onMessageBodyChange: (body: string) => void;
+  onMessageSubmit: (event: FormEvent<HTMLFormElement>) => void;
   loading: boolean;
 }) {
   if (!ticket) {
@@ -494,6 +560,36 @@ function TicketDetail({
           <span>{ticket.analysis.category}</span>
         </div>
       )}
+
+      <div className="messages">
+        <h3>Messages</h3>
+        <div className="messageList">
+          {messages.length === 0 && <p className="empty">No messages yet.</p>}
+          {messages.map((ticketMessage) => (
+            <article key={ticketMessage.id} className="messageItem">
+              <div>
+                <strong>{ticketMessage.sender.name}</strong>
+                <span>{ticketMessage.sender.role}</span>
+              </div>
+              <p>{ticketMessage.body}</p>
+              <small>{new Date(ticketMessage.createdAt).toLocaleString()}</small>
+            </article>
+          ))}
+        </div>
+        <form onSubmit={onMessageSubmit} className="messageForm">
+          <label>
+            Reply
+            <textarea
+              rows={4}
+              value={messageBody}
+              onChange={(event) => onMessageBodyChange(event.target.value)}
+            />
+          </label>
+          <button type="submit" disabled={loading || messageBody.trim().length === 0}>
+            Send message
+          </button>
+        </form>
+      </div>
     </section>
   );
 }
