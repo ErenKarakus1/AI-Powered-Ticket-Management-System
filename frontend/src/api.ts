@@ -58,6 +58,12 @@ export type TicketStats = {
   closed: number;
 };
 
+export type TicketPage = {
+  tickets: Ticket[];
+  hasMore: boolean;
+  nextOffset: number;
+};
+
 export type AuthResponse = {
   user: User;
   token: string;
@@ -111,8 +117,13 @@ export const createTicket = (token: string, input: { title: string; description:
   });
 };
 
-export const listTickets = (token: string) => {
-  return request<{ tickets: Ticket[] }>("/tickets", {
+export const listTickets = (token: string, input: { limit: number; offset: number }) => {
+  const params = new URLSearchParams({
+    limit: String(input.limit),
+    offset: String(input.offset)
+  });
+
+  return request<TicketPage>(`/tickets?${params.toString()}`, {
     headers: authHeaders(token)
   });
 };
@@ -123,8 +134,29 @@ export const getTicket = (token: string, id: string) => {
   });
 };
 
-export const listAdminTickets = (token: string) => {
-  return request<{ tickets: Ticket[] }>("/admin/tickets", {
+export const listAdminTickets = (
+  token: string,
+  input: {
+    limit: number;
+    offset: number;
+    status?: TicketStatus;
+    priority?: TicketPriority;
+  }
+) => {
+  const params = new URLSearchParams({
+    limit: String(input.limit),
+    offset: String(input.offset)
+  });
+
+  if (input.status) {
+    params.set("status", input.status);
+  }
+
+  if (input.priority) {
+    params.set("priority", input.priority);
+  }
+
+  return request<TicketPage>(`/admin/tickets?${params.toString()}`, {
     headers: authHeaders(token)
   });
 };

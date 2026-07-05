@@ -6,6 +6,26 @@ const isString = (value: unknown): value is string => {
   return typeof value === "string";
 };
 
+const parsePagination = (query: AuthenticatedRequest["query"]) => {
+  const limitValue = isString(query.limit) ? Number(query.limit) : 10;
+  const offsetValue = isString(query.offset) ? Number(query.offset) : 0;
+
+  if (
+    !Number.isInteger(limitValue) ||
+    !Number.isInteger(offsetValue) ||
+    limitValue < 1 ||
+    limitValue > 50 ||
+    offsetValue < 0
+  ) {
+    return null;
+  }
+
+  return {
+    limit: limitValue,
+    offset: offsetValue
+  };
+};
+
 const getUserId = (req: AuthenticatedRequest) => {
   return req.user?.userId;
 };
@@ -57,9 +77,19 @@ export const listTicketsController = async (req: AuthenticatedRequest, res: Resp
     return res.status(401).json({ message: "Authentication is required" });
   }
 
+  const pagination = parsePagination(req.query);
+
+  if (!pagination) {
+    return res.status(400).json({ message: "Limit must be 1-50 and offset must be 0 or greater" });
+  }
+
   try {
-    const tickets = await listUserTickets(userId);
-    return res.status(200).json({ tickets });
+    const result = await listUserTickets(userId, pagination);
+    return res.status(200).json({
+      tickets: result.tickets,
+      hasMore: result.hasMore,
+      nextOffset: pagination.offset + result.tickets.length
+    });
   } catch {
     return res.status(500).json({ message: "Could not load tickets" });
   }

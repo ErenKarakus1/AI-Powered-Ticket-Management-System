@@ -176,15 +176,38 @@ h2 {
   margin-bottom: 12px;
 }
 
-.statsGrid span {
+.statsFilter {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.statsFilter > span {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.statsFilter .statsGrid {
+  margin-bottom: 0;
+}
+
+.statsGrid button {
   background: #f4f7fb;
   border: 1px solid #dce3ec;
   border-radius: 6px;
   color: #344054;
   font-size: 12px;
   font-weight: 800;
+  min-height: 36px;
   padding: 8px;
   text-align: center;
+}
+
+.statsGrid button.active {
+  background: #2457d6;
+  border-color: #2457d6;
+  color: #ffffff;
 }
 
 .listControls {
@@ -256,6 +279,13 @@ textarea {
   color: #667085;
 }
 
+.loadMoreButton {
+  background: #eef2f5;
+  color: #344054;
+  margin-top: 12px;
+  width: 100%;
+}
+
 .detail {
   display: grid;
   gap: 16px;
@@ -322,14 +352,34 @@ dd {
   padding-top: 14px;
 }
 
+.messageHeader {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
 .messages h3 {
   font-size: 15px;
   margin-bottom: 0;
 }
 
+.messageHeader span {
+  background: #eef2f5;
+  border-radius: 999px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
 .messageList {
   display: grid;
   gap: 10px;
+  max-height: min(420px, 45vh);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 
 .messageItem {
@@ -339,6 +389,16 @@ dd {
   display: grid;
   gap: 8px;
   padding: 10px;
+}
+
+.messageItem.admin {
+  background: #f4f8ff;
+  border-color: #b9cdf8;
+}
+
+.messageItem.user {
+  background: #fff8eb;
+  border-color: #efd29b;
 }
 
 .messageItem div {
@@ -355,6 +415,16 @@ dd {
   font-size: 12px;
   font-weight: 800;
   padding: 3px 8px;
+}
+
+.messageItem.admin span {
+  background: #dbe8ff;
+  color: #1746b4;
+}
+
+.messageItem.user span {
+  background: #fbe7bd;
+  color: #8a4b00;
 }
 
 .messageItem p {

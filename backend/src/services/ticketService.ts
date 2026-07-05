@@ -19,6 +19,16 @@ type UpdateTicketPriorityInput = {
   priority: TicketPriorityValue;
 };
 
+type PaginationInput = {
+  limit: number;
+  offset: number;
+};
+
+type AdminTicketFilters = {
+  status?: TicketStatusValue;
+  priority?: TicketPriorityValue;
+};
+
 const ticketSelect = {
   id: true,
   title: true,
@@ -55,13 +65,27 @@ export const createTicket = async (input: CreateTicketInput) => {
   });
 };
 
-export const listAllTickets = async () => {
+export const listAllTickets = async (
+  pagination: PaginationInput,
+  filters: AdminTicketFilters = {}
+) => {
   const prisma = getPrisma();
 
-  return prisma.ticket.findMany({
-    orderBy: { createdAt: "desc" },
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      status: filters.status,
+      priority: filters.priority
+    },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
+    skip: pagination.offset,
+    take: pagination.limit + 1,
     select: adminTicketSelect
   });
+
+  return {
+    tickets: tickets.slice(0, pagination.limit),
+    hasMore: tickets.length > pagination.limit
+  };
 };
 
 export const getTicketById = async (ticketId: string) => {
@@ -111,14 +135,21 @@ export const updateTicketPriority = async (input: UpdateTicketPriorityInput) => 
   });
 };
 
-export const listUserTickets = async (userId: string) => {
+export const listUserTickets = async (userId: string, pagination: PaginationInput) => {
   const prisma = getPrisma();
 
-  return prisma.ticket.findMany({
+  const tickets = await prisma.ticket.findMany({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip: pagination.offset,
+    take: pagination.limit + 1,
     select: ticketSelect
   });
+
+  return {
+    tickets: tickets.slice(0, pagination.limit),
+    hasMore: tickets.length > pagination.limit
+  };
 };
 
 export const getUserTicketById = async (userId: string, ticketId: string) => {

@@ -28,6 +28,7 @@ type PriorityFilter = "ALL" | TicketPriority;
 
 const statusOptions: TicketStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 const priorityOptions: TicketPriority[] = ["UNASSIGNED", "LOW", "MEDIUM", "HIGH", "URGENT"];
+const ticketPageSize = 10;
 const statusRank: Record<TicketStatus, number> = {
   OPEN: 0,
   IN_PROGRESS: 1,
@@ -99,6 +100,10 @@ function App() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [adminTickets, setAdminTickets] = useState<Ticket[]>([]);
   const [adminStats, setAdminStats] = useState<TicketStats | null>(null);
+  const [ticketHasMore, setTicketHasMore] = useState(false);
+  const [ticketNextOffset, setTicketNextOffset] = useState(0);
+  const [adminHasMore, setAdminHasMore] = useState(false);
+  const [adminNextOffset, setAdminNextOffset] = useState(0);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [message, setMessage] = useState("");
   const [ticketMessages, setTicketMessages] = useState<TicketMessage[]>([]);
@@ -115,8 +120,8 @@ function App() {
     [ticketStatusFilter, tickets]
   );
   const visibleAdminTickets = useMemo(
-    () => filterTickets(adminTickets, adminStatusFilter, adminPriorityFilter, sortTickets),
-    [adminPriorityFilter, adminStatusFilter, adminTickets]
+    () => sortTickets(adminTickets),
+    [adminTickets]
   );
 
   const selectedFromLatestData = useMemo(() => {
@@ -145,28 +150,47 @@ function App() {
     localStorage.setItem("auth", JSON.stringify(nextAuth));
   };
 
-  const loadTickets = async (token = auth?.token) => {
+  const loadTickets = async (token = auth?.token, append = false) => {
     if (!token) {
       return;
     }
 
-    const result = await listTickets(token);
-    setTickets(result.tickets);
+    const result = await listTickets(token, {
+      limit: ticketPageSize,
+      offset: append ? ticketNextOffset : 0
+    });
+
+    setTickets((currentTickets) =>
+      append ? [...currentTickets, ...result.tickets] : result.tickets
+    );
+    setTicketHasMore(result.hasMore);
+    setTicketNextOffset(result.nextOffset);
   };
 
-  const loadAdminTickets = async (token = auth?.token) => {
+  const loadAdminTickets = async (token = auth?.token, append = false) => {
     if (!token || !isAdmin) {
       setAdminTickets([]);
       setAdminStats(null);
+      setAdminHasMore(false);
+      setAdminNextOffset(0);
       return;
     }
 
     const [ticketResult, statsResult] = await Promise.all([
-      listAdminTickets(token),
+      listAdminTickets(token, {
+        limit: ticketPageSize,
+        offset: append ? adminNextOffset : 0,
+        status: adminStatusFilter === "ALL" ? undefined : adminStatusFilter,
+        priority: adminPriorityFilter === "ALL" ? undefined : adminPriorityFilter
+      }),
       getAdminTicketStats(token)
     ]);
 
-    setAdminTickets(ticketResult.tickets);
+    setAdminTickets((currentTickets) =>
+      append ? [...currentTickets, ...ticketResult.tickets] : ticketResult.tickets
+    );
+    setAdminHasMore(ticketResult.hasMore);
+    setAdminNextOffset(ticketResult.nextOffset);
     setAdminStats(statsResult.ticketStats);
   };
 
@@ -186,19 +210,38 @@ function App() {
     if (!auth) {
       setTickets([]);
       setAdminTickets([]);
+      setTicketHasMore(false);
+      setTicketNextOffset(0);
+      setAdminHasMore(false);
+      setAdminNextOffset(0);
       return;
     }
 
     if (auth.user.role === "ADMIN") {
       setTickets([]);
-      void loadAdminTickets(auth.token).catch((err: Error) => showError(err.message));
+      setTicketHasMore(false);
+      setTicketNextOffset(0);
       return;
     }
 
     setAdminStats(null);
     setAdminTickets([]);
+    setAdminHasMore(false);
+    setAdminNextOffset(0);
     void loadTickets(auth.token).catch((err: Error) => showError(err.message));
   }, [auth]);
+
+  useEffect(() => {
+    if (!auth || auth.user.role !== "ADMIN") {
+      return;
+    }
+
+    setLoading(true);
+
+    void loadAdminTickets(auth.token)
+      .catch((err: Error) => showError(err.message))
+      .finally(() => setLoading(false));
+  }, [adminPriorityFilter, adminStatusFilter, auth]);
 
   useEffect(() => {
     if (!auth || !selectedFromLatestData) {
@@ -322,6 +365,38 @@ function App() {
     }
   };
 
+  const handleLoadMoreTickets = async () => {
+    if (!auth || loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await loadTickets(auth.token, true);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Could not load more tickets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadMoreAdminTickets = async () => {
+    if (!auth || loading) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await loadAdminTickets(auth.token, true);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Could not load more tickets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("auth");
     setAuth(null);
@@ -428,6 +503,9 @@ function App() {
                 statusFilter={ticketStatusFilter}
                 onStatusFilterChange={setTicketStatusFilter}
                 onSelect={setSelectedTicket}
+                hasMore={ticketHasMore}
+                loading={loading}
+                onLoadMore={() => void handleLoadMoreTickets()}
               />
             </div>
           )}
@@ -444,6 +522,9 @@ function App() {
                 onPriorityFilterChange={setAdminPriorityFilter}
                 stats={adminStats}
                 onSelect={setSelectedTicket}
+                hasMore={adminHasMore}
+                loading={loading}
+                onLoadMore={() => void handleLoadMoreAdminTickets()}
               />
             </div>
           )}
@@ -476,7 +557,10 @@ function TicketList({
   priorityFilter,
   onPriorityFilterChange,
   stats,
-  onSelect
+  onSelect,
+  hasMore,
+  loading,
+  onLoadMore
 }: {
   title: string;
   tickets: Ticket[];
@@ -487,6 +571,9 @@ function TicketList({
   onPriorityFilterChange?: (priorityFilter: PriorityFilter) => void;
   stats?: TicketStats | null;
   onSelect: (ticket: Ticket) => void;
+  hasMore: boolean;
+  loading: boolean;
+  onLoadMore: () => void;
 }) {
   return (
     <section className="panel">
@@ -494,22 +581,30 @@ function TicketList({
         <h2>{title}</h2>
         <span>{tickets.length}</span>
       </div>
-      {stats && <TicketStatsSummary stats={stats} />}
+      {stats && (
+        <TicketStatsSummary
+          stats={stats}
+          activeStatusFilter={statusFilter}
+          onStatusFilterChange={onStatusFilterChange}
+        />
+      )}
       <div className="listControls">
-        <label>
-          Status
-          <select
-            value={statusFilter}
-            onChange={(event) => onStatusFilterChange(event.target.value as StatusFilter)}
-          >
-            <option value="ALL">All statuses</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
+        {!stats && (
+          <label>
+            Status
+            <select
+              value={statusFilter}
+              onChange={(event) => onStatusFilterChange(event.target.value as StatusFilter)}
+            >
+              <option value="ALL">All statuses</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {priorityFilter && onPriorityFilterChange && (
           <label>
             Priority
@@ -543,18 +638,47 @@ function TicketList({
           </button>
         ))}
       </div>
+      {hasMore && (
+        <button type="button" className="loadMoreButton" disabled={loading} onClick={onLoadMore}>
+          {loading ? "Loading..." : "Load more"}
+        </button>
+      )}
     </section>
   );
 }
 
-function TicketStatsSummary({ stats }: { stats: TicketStats }) {
+function TicketStatsSummary({
+  stats,
+  activeStatusFilter,
+  onStatusFilterChange
+}: {
+  stats: TicketStats;
+  activeStatusFilter: StatusFilter;
+  onStatusFilterChange: (statusFilter: StatusFilter) => void;
+}) {
+  const statItems: Array<{ label: string; count: number; filter: StatusFilter }> = [
+    { label: "Total", count: stats.total, filter: "ALL" },
+    { label: "Open", count: stats.open, filter: "OPEN" },
+    { label: "In progress", count: stats.inProgress, filter: "IN_PROGRESS" },
+    { label: "Resolved", count: stats.resolved, filter: "RESOLVED" },
+    { label: "Closed", count: stats.closed, filter: "CLOSED" }
+  ];
+
   return (
-    <div className="statsGrid">
-      <span>Total {stats.total}</span>
-      <span>Open {stats.open}</span>
-      <span>In progress {stats.inProgress}</span>
-      <span>Resolved {stats.resolved}</span>
-      <span>Closed {stats.closed}</span>
+    <div className="statsFilter">
+      <span>Status</span>
+      <div className="statsGrid">
+        {statItems.map((item) => (
+          <button
+            type="button"
+            key={item.filter}
+            className={activeStatusFilter === item.filter ? "active" : ""}
+            onClick={() => onStatusFilterChange(item.filter)}
+          >
+            {item.label} {item.count}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -580,6 +704,16 @@ function TicketDetail({
   onMessageSubmit: (event: FormEvent<HTMLFormElement>) => void;
   loading: boolean;
 }) {
+  useEffect(() => {
+    const messageList = document.querySelector<HTMLDivElement>(".messageList");
+
+    if (!messageList) {
+      return;
+    }
+
+    messageList.scrollTop = messageList.scrollHeight;
+  }, [messages.length, ticket?.id]);
+
   if (!ticket) {
     return (
       <section className="panel detail">
@@ -659,11 +793,17 @@ function TicketDetail({
       )}
 
       <div className="messages">
-        <h3>Messages</h3>
+        <div className="messageHeader">
+          <h3>Messages</h3>
+          <span>{messages.length}</span>
+        </div>
         <div className="messageList">
           {messages.length === 0 && <p className="empty">No messages yet.</p>}
           {messages.map((ticketMessage) => (
-            <article key={ticketMessage.id} className="messageItem">
+            <article
+              key={ticketMessage.id}
+              className={`messageItem ${ticketMessage.sender.role === "ADMIN" ? "admin" : "user"}`}
+            >
               <div>
                 <strong>{ticketMessage.sender.name}</strong>
                 <span>{ticketMessage.sender.role}</span>
