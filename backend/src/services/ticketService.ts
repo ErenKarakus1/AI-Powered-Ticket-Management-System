@@ -27,6 +27,26 @@ type PaginationInput = {
 type AdminTicketFilters = {
   status?: TicketStatusValue;
   priority?: TicketPriorityValue;
+  search?: string;
+};
+
+type UserTicketFilters = {
+  status?: TicketStatusValue;
+  priority?: TicketPriorityValue;
+  search?: string;
+};
+
+const latestMessageSelect = {
+  orderBy: { createdAt: "desc" as const },
+  take: 1,
+  select: {
+    createdAt: true,
+    sender: {
+      select: {
+        role: true
+      }
+    }
+  }
 };
 
 const ticketSelect = {
@@ -37,7 +57,8 @@ const ticketSelect = {
   priority: true,
   userId: true,
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  messages: latestMessageSelect
 };
 
 const adminTicketSelect = {
@@ -70,11 +91,20 @@ export const listAllTickets = async (
   filters: AdminTicketFilters = {}
 ) => {
   const prisma = getPrisma();
+  const searchWhere = filters.search
+    ? {
+        OR: [
+          { title: { contains: filters.search, mode: "insensitive" as const } },
+          { description: { contains: filters.search, mode: "insensitive" as const } }
+        ]
+      }
+    : {};
 
   const tickets = await prisma.ticket.findMany({
     where: {
       status: filters.status,
-      priority: filters.priority
+      priority: filters.priority,
+      ...searchWhere
     },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
     skip: pagination.offset,
@@ -135,20 +165,64 @@ export const updateTicketPriority = async (input: UpdateTicketPriorityInput) => 
   });
 };
 
-export const listUserTickets = async (userId: string, pagination: PaginationInput) => {
+export const listUserTickets = async (
+  userId: string,
+  pagination: PaginationInput,
+  filters: UserTicketFilters = {}
+) => {
   const prisma = getPrisma();
+  const searchWhere = filters.search
+    ? {
+        OR: [
+          { title: { contains: filters.search, mode: "insensitive" as const } },
+          { description: { contains: filters.search, mode: "insensitive" as const } }
+        ]
+      }
+    : {};
+  const where = {
+    userId,
+    status: filters.status,
+    priority: filters.priority,
+    ...searchWhere
+  };
 
-  const tickets = await prisma.ticket.findMany({
-    where: { userId },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip: pagination.offset,
-    take: pagination.limit + 1,
-    select: ticketSelect
+  const [tickets, totalCount] = await Promise.all([
+    prisma.ticket.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: pagination.offset,
+      take: pagination.limit + 1,
+      select: {
+        ...ticketSelect,
+        reads: {
+          where: { userId },
+          take: 1,
+          select: {
+            lastReadAt: true
+          }
+        }
+      }
+    }),
+    prisma.ticket.count({ where })
+  ]);
+
+  const normalizedTickets = tickets.slice(0, pagination.limit).map(({ reads, ...ticket }) => {
+    const latestMessage = ticket.messages[0];
+    const read = reads[0];
+    const unread =
+      latestMessage?.sender.role === "ADMIN" &&
+      (!read || read.lastReadAt.getTime() < latestMessage.createdAt.getTime());
+
+    return {
+      ...ticket,
+      unread
+    };
   });
 
   return {
-    tickets: tickets.slice(0, pagination.limit),
-    hasMore: tickets.length > pagination.limit
+    tickets: normalizedTickets,
+    hasMore: tickets.length > pagination.limit,
+    totalCount
   };
 };
 
@@ -161,6 +235,44 @@ export const getUserTicketById = async (userId: string, ticketId: string) => {
       userId
     },
     select: ticketSelect
+  });
+};
+
+export const markUserTicketAsRead = async (userId: string, ticketId: string) => {
+  const prisma = getPrisma();
+
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      userId
+    },
+    select: {
+      id: true,
+      messages: latestMessageSelect
+    }
+  });
+
+  if (!ticket) {
+    return null;
+  }
+
+  const lastReadAt = ticket.messages[0]?.createdAt || new Date();
+
+  return prisma.ticketRead.upsert({
+    where: {
+      ticketId_userId: {
+        ticketId,
+        userId
+      }
+    },
+    update: {
+      lastReadAt
+    },
+    create: {
+      ticketId,
+      userId,
+      lastReadAt
+    }
   });
 };
 

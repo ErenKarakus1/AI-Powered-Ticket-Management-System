@@ -35,6 +35,7 @@ model User {
   role         UserRole @default(USER)
   tickets      Ticket[]
   messages     TicketMessage[]
+  ticketReads  TicketRead[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -49,6 +50,7 @@ model Ticket {
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   analysis    TicketAnalysis?
   messages    TicketMessage[]
+  reads       TicketRead[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -79,4 +81,18 @@ model TicketMessage {
 
   @@index([ticketId])
   @@index([senderId])
+}
+
+model TicketRead {
+  id         String   @id @default(uuid()) @db.Uuid
+  ticketId   String   @db.Uuid
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([ticketId, userId])
+  @@index([userId])
 }

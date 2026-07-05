@@ -16,6 +16,7 @@ import {
   listTicketMessages,
   listTickets,
   login,
+  markTicketRead,
   register,
   updateAdminTicketPriority,
   updateAdminTicketStatus
@@ -102,6 +103,7 @@ function App() {
   const [adminStats, setAdminStats] = useState<TicketStats | null>(null);
   const [ticketHasMore, setTicketHasMore] = useState(false);
   const [ticketNextOffset, setTicketNextOffset] = useState(0);
+  const [ticketTotalCount, setTicketTotalCount] = useState(0);
   const [adminHasMore, setAdminHasMore] = useState(false);
   const [adminNextOffset, setAdminNextOffset] = useState(0);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -111,13 +113,16 @@ function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ticketStatusFilter, setTicketStatusFilter] = useState<StatusFilter>("ALL");
+  const [ticketPriorityFilter, setTicketPriorityFilter] = useState<PriorityFilter>("ALL");
+  const [ticketSearch, setTicketSearch] = useState("");
   const [adminStatusFilter, setAdminStatusFilter] = useState<StatusFilter>("ALL");
   const [adminPriorityFilter, setAdminPriorityFilter] = useState<PriorityFilter>("ALL");
+  const [adminSearch, setAdminSearch] = useState("");
 
   const isAdmin = auth?.user.role === "ADMIN";
   const visibleTickets = useMemo(
-    () => filterTickets(tickets, ticketStatusFilter, "ALL", sortTicketsByNewest),
-    [ticketStatusFilter, tickets]
+    () => sortTicketsByNewest(tickets),
+    [tickets]
   );
   const visibleAdminTickets = useMemo(
     () => sortTickets(adminTickets),
@@ -150,6 +155,11 @@ function App() {
     localStorage.setItem("auth", JSON.stringify(nextAuth));
   };
 
+  const hasUserTicketFilters =
+    ticketStatusFilter !== "ALL" || ticketPriorityFilter !== "ALL" || ticketSearch.trim() !== "";
+  const hasAdminTicketFilters =
+    adminStatusFilter !== "ALL" || adminPriorityFilter !== "ALL" || adminSearch.trim() !== "";
+
   const loadTickets = async (token = auth?.token, append = false) => {
     if (!token) {
       return;
@@ -157,7 +167,10 @@ function App() {
 
     const result = await listTickets(token, {
       limit: ticketPageSize,
-      offset: append ? ticketNextOffset : 0
+      offset: append ? ticketNextOffset : 0,
+      status: ticketStatusFilter === "ALL" ? undefined : ticketStatusFilter,
+      priority: ticketPriorityFilter === "ALL" ? undefined : ticketPriorityFilter,
+      search: ticketSearch.trim() || undefined
     });
 
     setTickets((currentTickets) =>
@@ -165,6 +178,7 @@ function App() {
     );
     setTicketHasMore(result.hasMore);
     setTicketNextOffset(result.nextOffset);
+    setTicketTotalCount(result.totalCount ?? result.tickets.length);
   };
 
   const loadAdminTickets = async (token = auth?.token, append = false) => {
@@ -181,7 +195,8 @@ function App() {
         limit: ticketPageSize,
         offset: append ? adminNextOffset : 0,
         status: adminStatusFilter === "ALL" ? undefined : adminStatusFilter,
-        priority: adminPriorityFilter === "ALL" ? undefined : adminPriorityFilter
+        priority: adminPriorityFilter === "ALL" ? undefined : adminPriorityFilter,
+        search: adminSearch.trim() || undefined
       }),
       getAdminTicketStats(token)
     ]);
@@ -212,6 +227,7 @@ function App() {
       setAdminTickets([]);
       setTicketHasMore(false);
       setTicketNextOffset(0);
+      setTicketTotalCount(0);
       setAdminHasMore(false);
       setAdminNextOffset(0);
       return;
@@ -221,6 +237,7 @@ function App() {
       setTickets([]);
       setTicketHasMore(false);
       setTicketNextOffset(0);
+      setTicketTotalCount(0);
       return;
     }
 
@@ -228,8 +245,15 @@ function App() {
     setAdminTickets([]);
     setAdminHasMore(false);
     setAdminNextOffset(0);
-    void loadTickets(auth.token).catch((err: Error) => showError(err.message));
   }, [auth]);
+
+  useEffect(() => {
+    if (!auth || auth.user.role !== "USER") {
+      return;
+    }
+
+    void loadTickets(auth.token).catch((err: Error) => showError(err.message));
+  }, [auth, ticketPriorityFilter, ticketSearch, ticketStatusFilter]);
 
   useEffect(() => {
     if (!auth || auth.user.role !== "ADMIN") {
@@ -241,7 +265,7 @@ function App() {
     void loadAdminTickets(auth.token)
       .catch((err: Error) => showError(err.message))
       .finally(() => setLoading(false));
-  }, [adminPriorityFilter, adminStatusFilter, auth]);
+  }, [adminPriorityFilter, adminSearch, adminStatusFilter, auth]);
 
   useEffect(() => {
     if (!auth || !selectedFromLatestData) {
@@ -397,6 +421,46 @@ function App() {
     }
   };
 
+  const isUnreadTicket = (ticket: Ticket) => {
+    return Boolean(ticket.unread);
+  };
+
+  const markTicketAsRead = (ticket: Ticket) => {
+    if (!auth || auth.user.role !== "USER") {
+      return;
+    }
+
+    if (!ticket.unread) {
+      return;
+    }
+
+    const readTicket = { ...ticket, unread: false };
+    setSelectedTicket(readTicket);
+    setTickets((currentTickets) =>
+      currentTickets.map((currentTicket) =>
+        currentTicket.id === ticket.id ? { ...currentTicket, unread: false } : currentTicket
+      )
+    );
+
+    void markTicketRead(auth.token, ticket.id)
+      .then(() => {
+        setTickets((currentTickets) =>
+          currentTickets.map((currentTicket) =>
+            currentTicket.id === ticket.id ? { ...currentTicket, unread: false } : currentTicket
+          )
+        );
+        setSelectedTicket((currentTicket) =>
+          currentTicket?.id === ticket.id ? { ...currentTicket, unread: false } : currentTicket
+        );
+      })
+      .catch((err: Error) => showError(err.message));
+  };
+
+  const handleSelectTicket = (ticket: Ticket) => {
+    setSelectedTicket(ticket.unread ? { ...ticket, unread: false } : ticket);
+    markTicketAsRead(ticket);
+  };
+
   const logout = () => {
     localStorage.removeItem("auth");
     setAuth(null);
@@ -502,7 +566,14 @@ function App() {
                 selectedId={selectedFromLatestData?.id}
                 statusFilter={ticketStatusFilter}
                 onStatusFilterChange={setTicketStatusFilter}
-                onSelect={setSelectedTicket}
+                priorityFilter={ticketPriorityFilter}
+                onPriorityFilterChange={setTicketPriorityFilter}
+                searchTerm={ticketSearch}
+                onSearchTermChange={setTicketSearch}
+                onSelect={handleSelectTicket}
+                isUnread={isUnreadTicket}
+                totalCount={ticketTotalCount}
+                emptyText={hasUserTicketFilters ? "No matching tickets." : "No tickets yet."}
                 hasMore={ticketHasMore}
                 loading={loading}
                 onLoadMore={() => void handleLoadMoreTickets()}
@@ -520,8 +591,13 @@ function App() {
                 onStatusFilterChange={setAdminStatusFilter}
                 priorityFilter={adminPriorityFilter}
                 onPriorityFilterChange={setAdminPriorityFilter}
+                searchTerm={adminSearch}
+                onSearchTermChange={setAdminSearch}
                 stats={adminStats}
                 onSelect={setSelectedTicket}
+                isUnread={() => false}
+                totalCount={visibleAdminTickets.length}
+                emptyText={hasAdminTicketFilters ? "No matching tickets." : "No tickets yet."}
                 hasMore={adminHasMore}
                 loading={loading}
                 onLoadMore={() => void handleLoadMoreAdminTickets()}
@@ -556,8 +632,13 @@ function TicketList({
   onStatusFilterChange,
   priorityFilter,
   onPriorityFilterChange,
+  searchTerm,
+  onSearchTermChange,
   stats,
   onSelect,
+  isUnread,
+  totalCount,
+  emptyText,
   hasMore,
   loading,
   onLoadMore
@@ -569,8 +650,13 @@ function TicketList({
   onStatusFilterChange: (statusFilter: StatusFilter) => void;
   priorityFilter?: PriorityFilter;
   onPriorityFilterChange?: (priorityFilter: PriorityFilter) => void;
+  searchTerm: string;
+  onSearchTermChange: (searchTerm: string) => void;
   stats?: TicketStats | null;
   onSelect: (ticket: Ticket) => void;
+  isUnread: (ticket: Ticket) => boolean;
+  totalCount: number;
+  emptyText: string;
   hasMore: boolean;
   loading: boolean;
   onLoadMore: () => void;
@@ -579,7 +665,7 @@ function TicketList({
     <section className="panel">
       <div className="panelHeader">
         <h2>{title}</h2>
-        <span>{tickets.length}</span>
+        <span>{totalCount}</span>
       </div>
       {stats && (
         <TicketStatsSummary
@@ -621,9 +707,17 @@ function TicketList({
             </select>
           </label>
         )}
+        <label>
+          Search
+          <input
+            value={searchTerm}
+            placeholder="Search tickets"
+            onChange={(event) => onSearchTermChange(event.target.value)}
+          />
+        </label>
       </div>
       <div className="ticketList">
-        {tickets.length === 0 && <p className="empty">No tickets yet.</p>}
+        {tickets.length === 0 && <p className="empty">{emptyText}</p>}
         {tickets.map((ticket) => (
           <button
             type="button"
@@ -631,7 +725,10 @@ function TicketList({
             className={ticket.id === selectedId ? "ticketItem selected" : "ticketItem"}
             onClick={() => onSelect(ticket)}
           >
-            <span>{ticket.title}</span>
+            <span>
+              {ticket.title}
+              {isUnread(ticket) && <strong className="unreadMarker">New</strong>}
+            </span>
             <small>
               {ticket.status} - {formatPriority(ticket.priority)}
             </small>

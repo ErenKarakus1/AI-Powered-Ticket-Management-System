@@ -2,7 +2,8 @@ import { Router } from "express";
 import {
   createTicketController,
   getTicketController,
-  listTicketsController
+  listTicketsController,
+  markTicketReadController
 } from "../controllers/ticketController.js";
 import {
   createUserTicketMessageController,
@@ -16,6 +17,7 @@ const router = Router();
 router.post("/tickets", authMiddleware, userMiddleware, createTicketController);
 router.get("/tickets", authMiddleware, userMiddleware, listTicketsController);
 router.get("/tickets/:id", authMiddleware, userMiddleware, getTicketController);
+router.patch("/tickets/:id/read", authMiddleware, userMiddleware, markTicketReadController);
 router.get("/tickets/:id/messages", authMiddleware, userMiddleware, listUserTicketMessagesController);
 router.post("/tickets/:id/messages", authMiddleware, userMiddleware, createUserTicketMessageController);
 

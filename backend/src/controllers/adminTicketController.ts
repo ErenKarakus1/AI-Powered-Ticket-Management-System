@@ -47,9 +47,10 @@ const isTicketPriority = (value: string): value is TicketPriorityValue => {
 
 const parseAdminTicketFilters = (
   query: AuthenticatedRequest["query"]
-): { status?: TicketStatusValue; priority?: TicketPriorityValue } | null => {
+): { status?: TicketStatusValue; priority?: TicketPriorityValue; search?: string } | null => {
   const status = isString(query.status) ? query.status : undefined;
   const priority = isString(query.priority) ? query.priority : undefined;
+  const search = isString(query.search) ? query.search.trim() : undefined;
 
   if (status && !isTicketStatus(status)) {
     return null;
@@ -59,9 +60,14 @@ const parseAdminTicketFilters = (
     return null;
   }
 
+  if (search && search.length > 120) {
+    return null;
+  }
+
   return {
     status: status as TicketStatusValue | undefined,
-    priority: priority as TicketPriorityValue | undefined
+    priority: priority as TicketPriorityValue | undefined,
+    search: search || undefined
   };
 };
 
@@ -74,7 +80,7 @@ export const listAdminTicketsController = async (req: AuthenticatedRequest, res:
   }
 
   if (!filters) {
-    return res.status(400).json({ message: "Invalid ticket status or priority filter" });
+    return res.status(400).json({ message: "Invalid ticket status, priority, or search filter" });
   }
 
   try {

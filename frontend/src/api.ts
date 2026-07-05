@@ -19,6 +19,7 @@ export type Ticket = {
   userId: string;
   createdAt: string;
   updatedAt: string;
+  unread?: boolean;
   user?: {
     id: string;
     name: string;
@@ -33,6 +34,12 @@ export type Ticket = {
     createdAt: string;
     updatedAt: string;
   } | null;
+  messages?: Array<{
+    createdAt: string;
+    sender: {
+      role: "USER" | "ADMIN";
+    };
+  }>;
 };
 
 export type TicketMessage = {
@@ -62,6 +69,7 @@ export type TicketPage = {
   tickets: Ticket[];
   hasMore: boolean;
   nextOffset: number;
+  totalCount?: number;
 };
 
 export type AuthResponse = {
@@ -117,30 +125,14 @@ export const createTicket = (token: string, input: { title: string; description:
   });
 };
 
-export const listTickets = (token: string, input: { limit: number; offset: number }) => {
-  const params = new URLSearchParams({
-    limit: String(input.limit),
-    offset: String(input.offset)
-  });
-
-  return request<TicketPage>(`/tickets?${params.toString()}`, {
-    headers: authHeaders(token)
-  });
-};
-
-export const getTicket = (token: string, id: string) => {
-  return request<{ ticket: Ticket }>(`/tickets/${id}`, {
-    headers: authHeaders(token)
-  });
-};
-
-export const listAdminTickets = (
+export const listTickets = (
   token: string,
   input: {
     limit: number;
     offset: number;
     status?: TicketStatus;
     priority?: TicketPriority;
+    search?: string;
   }
 ) => {
   const params = new URLSearchParams({
@@ -154,6 +146,58 @@ export const listAdminTickets = (
 
   if (input.priority) {
     params.set("priority", input.priority);
+  }
+
+  if (input.search) {
+    params.set("search", input.search);
+  }
+
+  return request<TicketPage>(`/tickets?${params.toString()}`, {
+    headers: authHeaders(token)
+  });
+};
+
+export const getTicket = (token: string, id: string) => {
+  return request<{ ticket: Ticket }>(`/tickets/${id}`, {
+    headers: authHeaders(token)
+  });
+};
+
+export const markTicketRead = (token: string, id: string) => {
+  return request<{ ticketRead: { id: string; ticketId: string; userId: string; lastReadAt: string } }>(
+    `/tickets/${id}/read`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token)
+    }
+  );
+};
+
+export const listAdminTickets = (
+  token: string,
+  input: {
+    limit: number;
+    offset: number;
+    status?: TicketStatus;
+    priority?: TicketPriority;
+    search?: string;
+  }
+) => {
+  const params = new URLSearchParams({
+    limit: String(input.limit),
+    offset: String(input.offset)
+  });
+
+  if (input.status) {
+    params.set("status", input.status);
+  }
+
+  if (input.priority) {
+    params.set("priority", input.priority);
+  }
+
+  if (input.search) {
+    params.set("search", input.search);
   }
 
   return request<TicketPage>(`/admin/tickets?${params.toString()}`, {

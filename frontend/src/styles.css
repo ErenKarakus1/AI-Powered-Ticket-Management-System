@@ -221,6 +221,10 @@ h2 {
   max-width: 100%;
 }
 
+.listControls label:last-child {
+  grid-column: 1 / -1;
+}
+
 .form {
   display: grid;
   gap: 14px;
@@ -272,7 +276,19 @@ textarea {
 }
 
 .ticketItem span {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   font-weight: 800;
+}
+
+.unreadMarker {
+  background: #fef3c7;
+  border-radius: 999px;
+  color: #92400e;
+  font-size: 11px;
+  padding: 2px 7px;
 }
 
 .ticketItem small {
