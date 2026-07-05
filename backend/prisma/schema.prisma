@@ -20,6 +20,7 @@ enum TicketStatus {
 }
 
 enum TicketPriority {
+  UNASSIGNED
   LOW
   MEDIUM
   HIGH
@@ -43,7 +44,7 @@ model Ticket {
   title       String
   description String
   status      TicketStatus   @default(OPEN)
-  priority    TicketPriority @default(MEDIUM)
+  priority    TicketPriority @default(UNASSIGNED)
   userId      String         @db.Uuid
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   analysis    TicketAnalysis?
