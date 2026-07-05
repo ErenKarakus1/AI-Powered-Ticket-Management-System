@@ -142,6 +142,10 @@ h2 {
   grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.1fr) minmax(280px, 0.95fr);
 }
 
+.workspace.userWorkspace {
+  grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.15fr);
+}
+
 .workspace.adminWorkspace {
   grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.2fr);
 }
@@ -165,12 +169,33 @@ h2 {
   justify-content: space-between;
 }
 
+.statsGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.statsGrid span {
+  background: #f4f7fb;
+  border: 1px solid #dce3ec;
+  border-radius: 6px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px;
+  text-align: center;
+}
+
 .listControls {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 12px;
 }
 
 .listControls label {
-  max-width: 220px;
+  max-width: 100%;
 }
 
 .form {
@@ -274,6 +299,12 @@ dd {
   padding: 12px;
 }
 
+.adminControls {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
 .analysis h3 {
   font-size: 15px;
   margin-bottom: 8px;
@@ -357,6 +388,14 @@ dd {
   }
 
   .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace.userWorkspace,
+  .workspace.adminWorkspace,
+  .listControls,
+  .statsGrid,
+  .adminControls {
     grid-template-columns: 1fr;
   }
 }

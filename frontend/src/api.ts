@@ -8,7 +8,7 @@ export type User = {
 };
 
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
-export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TicketPriority = "UNASSIGNED" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 export type Ticket = {
   id: string;
@@ -48,6 +48,14 @@ export type TicketMessage = {
     email: string;
     role: "USER" | "ADMIN";
   };
+};
+
+export type TicketStats = {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+  closed: number;
 };
 
 export type AuthResponse = {
@@ -121,11 +129,29 @@ export const listAdminTickets = (token: string) => {
   });
 };
 
+export const getAdminTicketStats = (token: string) => {
+  return request<{ ticketStats: TicketStats }>("/admin/tickets/stats", {
+    headers: authHeaders(token)
+  });
+};
+
 export const updateAdminTicketStatus = (token: string, id: string, status: TicketStatus) => {
   return request<{ ticket: Ticket }>(`/admin/tickets/${id}/status`, {
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify({ status })
+  });
+};
+
+export const updateAdminTicketPriority = (
+  token: string,
+  id: string,
+  priority: TicketPriority
+) => {
+  return request<{ ticket: Ticket }>(`/admin/tickets/${id}/priority`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ priority })
   });
 };
 

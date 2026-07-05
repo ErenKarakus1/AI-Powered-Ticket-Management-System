@@ -7,10 +7,16 @@ type CreateTicketInput = {
 };
 
 type TicketStatusValue = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+type TicketPriorityValue = "UNASSIGNED" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 type UpdateTicketStatusInput = {
   ticketId: string;
   status: TicketStatusValue;
+};
+
+type UpdateTicketPriorityInput = {
+  ticketId: string;
+  priority: TicketPriorityValue;
 };
 
 const ticketSelect = {
@@ -86,6 +92,25 @@ export const updateTicketStatus = async (input: UpdateTicketStatusInput) => {
   });
 };
 
+export const updateTicketPriority = async (input: UpdateTicketPriorityInput) => {
+  const prisma = getPrisma();
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: input.ticketId },
+    select: { id: true }
+  });
+
+  if (!ticket) {
+    return null;
+  }
+
+  return prisma.ticket.update({
+    where: { id: input.ticketId },
+    data: { priority: input.priority },
+    select: adminTicketSelect
+  });
+};
+
 export const listUserTickets = async (userId: string) => {
   const prisma = getPrisma();
 
@@ -106,4 +131,30 @@ export const getUserTicketById = async (userId: string, ticketId: string) => {
     },
     select: ticketSelect
   });
+};
+
+export const getTicketStats = async () => {
+  const prisma = getPrisma();
+
+  const [
+    totalTicketsCount,
+    openTicketsCount,
+    inProgressTicketsCount,
+    resolvedTicketsCount,
+    closedTicketsCount
+  ] = await Promise.all([
+    prisma.ticket.count(),
+    prisma.ticket.count({ where: { status: "OPEN" } }),
+    prisma.ticket.count({ where: { status: "IN_PROGRESS" } }),
+    prisma.ticket.count({ where: { status: "RESOLVED" } }),
+    prisma.ticket.count({ where: { status: "CLOSED" } })
+  ]);
+
+  return {
+    total: totalTicketsCount,
+    open: openTicketsCount,
+    inProgress: inProgressTicketsCount,
+    resolved: resolvedTicketsCount,
+    closed: closedTicketsCount
+  };
 };
