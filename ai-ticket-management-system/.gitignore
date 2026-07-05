@@ -1,0 +1,7 @@
+node_modules/
+dist/
+backend/src/generated/
+.env
+CODEX.md
+*.log
+.DS_Store
