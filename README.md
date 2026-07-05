@@ -43,7 +43,7 @@ Optional AI analysis settings:
 
 ```env
 OPENAI_API_KEY="your-api-key"
-OPENAI_MODEL="gpt-5.2"
+OPENAI_MODEL="gpt-5.4-nano"
 ```
 
 If `OPENAI_API_KEY` is empty, tickets are still created normally and AI analysis is skipped.

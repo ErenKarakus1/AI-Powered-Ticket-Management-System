@@ -7,5 +7,5 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL,
   jwtSecret: process.env.JWT_SECRET,
   openAiApiKey: process.env.OPENAI_API_KEY,
-  openAiModel: process.env.OPENAI_MODEL || "gpt-5.2"
+  openAiModel: process.env.OPENAI_MODEL || "gpt-5.4-nano"
 };

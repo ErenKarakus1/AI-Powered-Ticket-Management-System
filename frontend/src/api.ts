@@ -163,6 +163,12 @@ export const getTicket = (token: string, id: string) => {
   });
 };
 
+export const getAdminTicket = (token: string, id: string) => {
+  return request<{ ticket: Ticket }>(`/admin/tickets/${id}`, {
+    headers: authHeaders(token)
+  });
+};
+
 export const markTicketRead = (token: string, id: string) => {
   return request<{ ticketRead: { id: string; ticketId: string; userId: string; lastReadAt: string } }>(
     `/tickets/${id}/read`,

@@ -11,6 +11,8 @@ import {
   createTicket,
   createTicketMessage,
   getAdminTicketStats,
+  getAdminTicket,
+  getTicket,
   listAdminTicketMessages,
   listAdminTickets,
   listTicketMessages,
@@ -277,6 +279,51 @@ function App() {
       (err: Error) => showError(err.message)
     );
   }, [auth, selectedFromLatestData?.id]);
+
+  useEffect(() => {
+    if (!auth || !selectedFromLatestData || selectedFromLatestData.analysis) {
+      return;
+    }
+
+    let attempts = 0;
+    const intervalId = window.setInterval(() => {
+      attempts += 1;
+
+      const loadTicket = auth.user.role === "ADMIN" ? getAdminTicket : getTicket;
+
+      void loadTicket(auth.token, selectedFromLatestData.id)
+        .then((result) => {
+          if (!result.ticket.analysis) {
+            return;
+          }
+
+          setSelectedTicket(result.ticket);
+
+          if (auth.user.role === "ADMIN") {
+            setAdminTickets((currentTickets) =>
+              currentTickets.map((ticket) =>
+                ticket.id === result.ticket.id ? result.ticket : ticket
+              )
+            );
+          } else {
+            setTickets((currentTickets) =>
+              currentTickets.map((ticket) =>
+                ticket.id === result.ticket.id ? result.ticket : ticket
+              )
+            );
+          }
+
+          window.clearInterval(intervalId);
+        })
+        .catch((err: Error) => showError(err.message));
+
+      if (attempts >= 8) {
+        window.clearInterval(intervalId);
+      }
+    }, 1500);
+
+    return () => window.clearInterval(intervalId);
+  }, [auth, selectedFromLatestData?.analysis, selectedFromLatestData?.id]);
 
   const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

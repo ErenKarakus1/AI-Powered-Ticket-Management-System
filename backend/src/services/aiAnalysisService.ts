@@ -73,6 +73,7 @@ export const analyzeTicketWithAi = async (input: AnalyzeTicketInput) => {
 
   const response = await client.responses.create({
     model: env.openAiModel,
+    max_output_tokens: 250,
     input: [
       {
         role: "developer",
@@ -120,14 +121,26 @@ export const analyzeTicketWithAi = async (input: AnalyzeTicketInput) => {
 
   const prisma = getPrisma();
 
-  return prisma.ticketAnalysis.upsert({
-    where: {
-      ticketId: input.ticketId
-    },
-    update: analysis,
-    create: {
-      ticketId: input.ticketId,
-      ...analysis
-    }
-  });
+  const [ticketAnalysis] = await prisma.$transaction([
+    prisma.ticketAnalysis.upsert({
+      where: {
+        ticketId: input.ticketId
+      },
+      update: analysis,
+      create: {
+        ticketId: input.ticketId,
+        ...analysis
+      }
+    }),
+    prisma.ticket.update({
+      where: {
+        id: input.ticketId
+      },
+      data: {
+        priority: analysis.priority
+      }
+    })
+  ]);
+
+  return ticketAnalysis;
 };
