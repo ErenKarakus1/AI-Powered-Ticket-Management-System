@@ -1,4 +1,5 @@
 import type { Response } from "express";
+import { analyzeTicketWithAi } from "../services/aiAnalysisService.js";
 import type { AuthenticatedRequest } from "../types/authenticatedRequest.js";
 import {
   createTicket,
@@ -106,6 +107,14 @@ export const createTicketController = async (req: AuthenticatedRequest, res: Res
       userId,
       title: trimmedTitle,
       description: trimmedDescription
+    });
+
+    void analyzeTicketWithAi({
+      ticketId: ticket.id,
+      title: ticket.title,
+      description: ticket.description
+    }).catch((error) => {
+      console.error("AI ticket analysis failed", error);
     });
 
     return res.status(201).json({ ticket });

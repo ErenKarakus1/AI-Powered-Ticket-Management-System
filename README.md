@@ -13,9 +13,10 @@ A full-stack support ticket platform for portfolio and internship applications.
 - Admin ticket queue
 - Admin status and priority updates
 - Ticket messages between users and admins
+- AI ticket analysis on ticket creation with OpenAI
 - Health checks at `GET /health` and `GET /health/db`
 
-AI analysis, RabbitMQ, Redis, Docker, and the AI worker are planned for later.
+RabbitMQ, Redis, Docker, and the AI worker are planned for later.
 
 ## Project Structure
 
@@ -37,6 +38,15 @@ npm run dev
 ```
 
 Update `backend/.env` with your local PostgreSQL `DATABASE_URL` and `JWT_SECRET`.
+
+Optional AI analysis settings:
+
+```env
+OPENAI_API_KEY="your-api-key"
+OPENAI_MODEL="gpt-5.2"
+```
+
+If `OPENAI_API_KEY` is empty, tickets are still created normally and AI analysis is skipped.
 
 ## Frontend Setup
 

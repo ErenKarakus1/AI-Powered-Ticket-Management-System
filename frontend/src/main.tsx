@@ -885,7 +885,9 @@ function TicketDetail({
         <div className="analysis">
           <h3>AI Analysis</h3>
           <p>{ticket.analysis.summary}</p>
-          <span>{ticket.analysis.category}</span>
+          <span>
+            {ticket.analysis.category} - {formatPriority(ticket.analysis.priority)}
+          </span>
         </div>
       )}
 
