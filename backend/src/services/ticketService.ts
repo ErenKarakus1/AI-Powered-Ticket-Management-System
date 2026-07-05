@@ -6,6 +6,13 @@ type CreateTicketInput = {
   description: string;
 };
 
+type TicketStatusValue = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+
+type UpdateTicketStatusInput = {
+  ticketId: string;
+  status: TicketStatusValue;
+};
+
 const ticketSelect = {
   id: true,
   title: true,
@@ -15,6 +22,18 @@ const ticketSelect = {
   userId: true,
   createdAt: true,
   updatedAt: true
+};
+
+const adminTicketSelect = {
+  ...ticketSelect,
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true
+    }
+  },
+  analysis: true
 };
 
 export const createTicket = async (input: CreateTicketInput) => {
@@ -27,6 +46,43 @@ export const createTicket = async (input: CreateTicketInput) => {
       userId: input.userId
     },
     select: ticketSelect
+  });
+};
+
+export const listAllTickets = async () => {
+  const prisma = getPrisma();
+
+  return prisma.ticket.findMany({
+    orderBy: { createdAt: "desc" },
+    select: adminTicketSelect
+  });
+};
+
+export const getTicketById = async (ticketId: string) => {
+  const prisma = getPrisma();
+
+  return prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: adminTicketSelect
+  });
+};
+
+export const updateTicketStatus = async (input: UpdateTicketStatusInput) => {
+  const prisma = getPrisma();
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: input.ticketId },
+    select: { id: true }
+  });
+
+  if (!ticket) {
+    return null;
+  }
+
+  return prisma.ticket.update({
+    where: { id: input.ticketId },
+    data: { status: input.status },
+    select: adminTicketSelect
   });
 };
 
