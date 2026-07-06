@@ -15,17 +15,16 @@ This project was built as a learning and portfolio project. I used Codex while b
 - Ticket messaging between users and admins
 - User notifications for unread admin messages
 - Closed tickets are read-only for users
-- Admin-only AI ticket analysis
+- Only admins can see AI ticket analysis
 - AI worker consumes RabbitMQ jobs and stores ticket analysis in PostgreSQL
 - Filtering by status, priority, and search
 - Paginated ticket loading with a load-more flow
-- Health checks at `GET /health` and `GET /health/db`
 - Backend integration tests for ticket privacy, notifications, and closed-ticket behavior
 
 ## Tech Stack
 
-- Frontend: React, TypeScript, Vite
 - Backend: Node.js, Express, TypeScript
+- Frontend: React, TypeScript, Vite
 - Database: PostgreSQL
 - ORM: Prisma
 - Queue: RabbitMQ
@@ -111,7 +110,6 @@ OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-5.4-nano"
 ```
 
-Do not commit real `.env` files or API keys.
 
 ## RabbitMQ
 
@@ -159,19 +157,10 @@ npm run build
 
 Public registration creates `USER` accounts only.
 
-Admin accounts are created manually in the database. A local demo admin can be created with:
-
-```text
-email: admin@demo.com
-password: adminuser123
-```
-
-Use this only for local development.
+Admin accounts are created manually in the database.
 
 ## Security Notes
 
-- Real `.env` files are ignored by git.
-- `CODEX.md` is ignored by git.
 - Users cannot access admin ticket routes.
 - Users cannot see AI analysis responses.
 - Users cannot reply to closed tickets.
