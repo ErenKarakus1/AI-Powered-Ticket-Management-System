@@ -610,8 +610,15 @@ export const markUserTicketAsRead = async (userId: string, ticketId: string) => 
   });
 };
 
-export const getTicketStats = async () => {
+export const getTicketStats = async (adminId: string) => {
   const prisma = getPrisma();
+
+  const adminTicketFilter = {
+    OR: [
+      { assignedAdminId: null },
+      { assignedAdminId: adminId }
+    ]
+  };
 
   const [
     totalTicketsCount,
@@ -620,11 +627,11 @@ export const getTicketStats = async () => {
     resolvedTicketsCount,
     closedTicketsCount
   ] = await Promise.all([
-    prisma.ticket.count(),
-    prisma.ticket.count({ where: { status: "OPEN" } }),
-    prisma.ticket.count({ where: { status: "IN_PROGRESS" } }),
-    prisma.ticket.count({ where: { status: "RESOLVED" } }),
-    prisma.ticket.count({ where: { status: "CLOSED" } })
+    prisma.ticket.count({ where: adminTicketFilter}),
+    prisma.ticket.count({ where: { ...adminTicketFilter, status: "OPEN" } }),
+    prisma.ticket.count({ where: { ...adminTicketFilter, status: "IN_PROGRESS" } }),
+    prisma.ticket.count({ where: { ...adminTicketFilter, status: "RESOLVED" } }),
+    prisma.ticket.count({ where: { ...adminTicketFilter, status: "CLOSED" } })
   ]);
 
   return {
