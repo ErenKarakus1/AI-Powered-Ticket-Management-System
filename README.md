@@ -16,7 +16,7 @@ A full-stack support ticket platform for portfolio and internship applications.
 - AI ticket analysis on ticket creation with OpenAI
 - Health checks at `GET /health` and `GET /health/db`
 
-RabbitMQ, Redis, Docker, and the AI worker are planned for later.
+Redis and Docker are planned for later.
 
 ## Project Structure
 
@@ -39,14 +39,35 @@ npm run dev
 
 Update `backend/.env` with your local PostgreSQL `DATABASE_URL` and `JWT_SECRET`.
 
-Optional AI analysis settings:
+Optional backend queue settings:
 
 ```env
+RABBITMQ_URL="amqp://localhost:5672"
+TICKET_ANALYSIS_QUEUE="ticket.analysis"
+```
+
+If `RABBITMQ_URL` is empty, tickets are still created normally and AI analysis jobs are not queued.
+
+## AI Worker Setup
+
+The backend publishes ticket analysis jobs to RabbitMQ. The AI worker consumes those jobs, calls OpenAI, stores `TicketAnalysis`, and updates the ticket priority.
+
+```bash
+cd ai-worker
+npm install
+copy .env.example .env
+npm run dev
+```
+
+Update `ai-worker/.env` with:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_ticket_management?schema=public"
+RABBITMQ_URL="amqp://localhost:5672"
+TICKET_ANALYSIS_QUEUE="ticket.analysis"
 OPENAI_API_KEY="your-api-key"
 OPENAI_MODEL="gpt-5.4-nano"
 ```
-
-If `OPENAI_API_KEY` is empty, tickets are still created normally and AI analysis is skipped.
 
 ## Frontend Setup
 
@@ -73,6 +94,13 @@ cd backend
 npm run build
 npm run prisma:generate
 npx prisma migrate status
+```
+
+AI worker:
+
+```bash
+cd ai-worker
+npm run build
 ```
 
 Frontend:

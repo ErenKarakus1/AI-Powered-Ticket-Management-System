@@ -49,6 +49,8 @@ const latestMessageSelect = {
   }
 };
 
+const adminPriorityOrder: TicketPriorityValue[] = ["URGENT", "HIGH", "MEDIUM", "LOW", "UNASSIGNED"];
+
 const ticketSelect = {
   id: true,
   title: true,
@@ -63,14 +65,14 @@ const ticketSelect = {
 
 const adminTicketSelect = {
   ...ticketSelect,
+  analysis: true,
   user: {
     select: {
       id: true,
       name: true,
       email: true
     }
-  },
-  analysis: true
+  }
 };
 
 export const createTicket = async (input: CreateTicketInput) => {
@@ -100,17 +102,29 @@ export const listAllTickets = async (
       }
     : {};
 
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      status: filters.status,
-      priority: filters.priority,
-      ...searchWhere
-    },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }, { id: "desc" }],
-    skip: pagination.offset,
-    take: pagination.limit + 1,
-    select: adminTicketSelect
-  });
+  const statusOrder: TicketStatusValue[] = filters.status
+    ? [filters.status]
+    : ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+  const priorityOrder = filters.priority ? [filters.priority] : adminPriorityOrder;
+  const orderedTickets = [];
+
+  for (const status of statusOrder) {
+    for (const priority of priorityOrder) {
+      const tickets = await prisma.ticket.findMany({
+        where: {
+          status,
+          priority,
+          ...searchWhere
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: adminTicketSelect
+      });
+
+      orderedTickets.push(...tickets);
+    }
+  }
+
+  const tickets = orderedTickets.slice(pagination.offset, pagination.offset + pagination.limit + 1);
 
   return {
     tickets: tickets.slice(0, pagination.limit),
@@ -186,25 +200,41 @@ export const listUserTickets = async (
     ...searchWhere
   };
 
-  const [tickets, totalCount] = await Promise.all([
-    prisma.ticket.findMany({
-      where,
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      skip: pagination.offset,
-      take: pagination.limit + 1,
-      select: {
-        ...ticketSelect,
-        reads: {
-          where: { userId },
-          take: 1,
-          select: {
-            lastReadAt: true
-          }
-        }
-      }
-    }),
+  const statusOrder: TicketStatusValue[] = filters.status
+    ? [filters.status]
+    : ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+  const priorityOrder = filters.priority ? [filters.priority] : adminPriorityOrder;
+
+  const [ticketGroups, totalCount] = await Promise.all([
+    Promise.all(
+      statusOrder.flatMap((status) =>
+        priorityOrder.map((priority) =>
+          prisma.ticket.findMany({
+            where: {
+              ...where,
+              status,
+              priority
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            select: {
+              ...ticketSelect,
+              reads: {
+                where: { userId },
+                take: 1,
+                select: {
+                  lastReadAt: true
+                }
+              }
+            }
+          })
+        )
+      )
+    ),
     prisma.ticket.count({ where })
   ]);
+  const tickets = ticketGroups
+    .flat()
+    .slice(pagination.offset, pagination.offset + pagination.limit + 1);
 
   const normalizedTickets = tickets.slice(0, pagination.limit).map(({ reads, ...ticket }) => {
     const latestMessage = ticket.messages[0];
@@ -224,6 +254,42 @@ export const listUserTickets = async (
     hasMore: tickets.length > pagination.limit,
     totalCount
   };
+};
+
+export const listUserTicketNotifications = async (userId: string) => {
+  const prisma = getPrisma();
+
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      userId
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    select: {
+      ...ticketSelect,
+      reads: {
+        where: { userId },
+        take: 1,
+        select: {
+          lastReadAt: true
+        }
+      }
+    }
+  });
+
+  return tickets
+    .filter((ticket) => {
+      const latestMessage = ticket.messages[0];
+      const read = ticket.reads[0];
+
+      return (
+        latestMessage?.sender.role === "ADMIN" &&
+        (!read || read.lastReadAt.getTime() < latestMessage.createdAt.getTime())
+      );
+    })
+    .map(({ reads, ...ticket }) => ({
+      ...ticket,
+      unread: true
+    }));
 };
 
 export const getUserTicketById = async (userId: string, ticketId: string) => {

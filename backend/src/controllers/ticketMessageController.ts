@@ -1,6 +1,7 @@
 import type { Response } from "express";
 import {
   createTicketMessage,
+  getUserTicketForMessaging,
   listTicketMessages,
   ticketExists,
   userCanAccessTicket
@@ -80,10 +81,14 @@ export const createUserTicketMessageController = async (req: AuthenticatedReques
   }
 
   try {
-    const canAccessTicket = await userCanAccessTicket(userId, id);
+    const ticket = await getUserTicketForMessaging(userId, id);
 
-    if (!canAccessTicket) {
+    if (!ticket) {
       return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    if (ticket.status === "CLOSED") {
+      return res.status(403).json({ message: "Closed tickets are read-only" });
     }
 
     const message = await createTicketMessage({

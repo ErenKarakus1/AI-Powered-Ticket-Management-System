@@ -16,6 +16,7 @@ import {
   listAdminTicketMessages,
   listAdminTickets,
   listTicketMessages,
+  listTicketNotifications,
   listTickets,
   login,
   markTicketRead,
@@ -38,6 +39,13 @@ const statusRank: Record<TicketStatus, number> = {
   RESOLVED: 2,
   CLOSED: 3
 };
+const priorityRank: Record<TicketPriority, number> = {
+  URGENT: 0,
+  HIGH: 1,
+  MEDIUM: 2,
+  LOW: 3,
+  UNASSIGNED: 4
+};
 
 const sortTickets = (items: Ticket[]) => {
   return [...items].sort((first, second) => {
@@ -47,14 +55,32 @@ const sortTickets = (items: Ticket[]) => {
       return statusDifference;
     }
 
+    const priorityDifference = priorityRank[first.priority] - priorityRank[second.priority];
+
+    if (priorityDifference !== 0) {
+      return priorityDifference;
+    }
+
     return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
   });
 };
 
 const sortTicketsByNewest = (items: Ticket[]) => {
-  return [...items].sort(
-    (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()
-  );
+  return [...items].sort((first, second) => {
+    const statusDifference = statusRank[first.status] - statusRank[second.status];
+
+    if (statusDifference !== 0) {
+      return statusDifference;
+    }
+
+    const priorityDifference = priorityRank[first.priority] - priorityRank[second.priority];
+
+    if (priorityDifference !== 0) {
+      return priorityDifference;
+    }
+
+    return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+  });
 };
 
 const filterTickets = (
@@ -75,6 +101,18 @@ const filterTickets = (
 
 const formatPriority = (priority: TicketPriority) => {
   return priority;
+};
+
+const formatStatus = (status: TicketStatus) => {
+  return status.replace("_", " ");
+};
+
+const formatCategory = (ticket: Ticket) => {
+  return ticket.analysis?.category || "Uncategorized";
+};
+
+const categoryClassName = (ticket: Ticket) => {
+  return ticket.analysis?.category ? "categoryBadge" : "categoryBadge empty";
 };
 
 const storedAuth = () => {
@@ -106,6 +144,8 @@ function App() {
   const [ticketHasMore, setTicketHasMore] = useState(false);
   const [ticketNextOffset, setTicketNextOffset] = useState(0);
   const [ticketTotalCount, setTicketTotalCount] = useState(0);
+  const [ticketNotifications, setTicketNotifications] = useState<Ticket[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [adminHasMore, setAdminHasMore] = useState(false);
   const [adminNextOffset, setAdminNextOffset] = useState(0);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -183,6 +223,16 @@ function App() {
     setTicketTotalCount(result.totalCount ?? result.tickets.length);
   };
 
+  const loadTicketNotifications = async (token = auth?.token) => {
+    if (!token || auth?.user.role !== "USER") {
+      setTicketNotifications([]);
+      return;
+    }
+
+    const result = await listTicketNotifications(token);
+    setTicketNotifications(result.notifications);
+  };
+
   const loadAdminTickets = async (token = auth?.token, append = false) => {
     if (!token || !isAdmin) {
       setAdminTickets([]);
@@ -227,6 +277,8 @@ function App() {
     if (!auth) {
       setTickets([]);
       setAdminTickets([]);
+      setTicketNotifications([]);
+      setShowNotifications(false);
       setTicketHasMore(false);
       setTicketNextOffset(0);
       setTicketTotalCount(0);
@@ -237,6 +289,8 @@ function App() {
 
     if (auth.user.role === "ADMIN") {
       setTickets([]);
+      setTicketNotifications([]);
+      setShowNotifications(false);
       setTicketHasMore(false);
       setTicketNextOffset(0);
       setTicketTotalCount(0);
@@ -255,7 +309,20 @@ function App() {
     }
 
     void loadTickets(auth.token).catch((err: Error) => showError(err.message));
+    void loadTicketNotifications(auth.token).catch((err: Error) => showError(err.message));
   }, [auth, ticketPriorityFilter, ticketSearch, ticketStatusFilter]);
+
+  useEffect(() => {
+    if (!auth || auth.user.role !== "USER") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadTicketNotifications(auth.token).catch((err: Error) => showError(err.message));
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
+  }, [auth]);
 
   useEffect(() => {
     if (!auth || auth.user.role !== "ADMIN") {
@@ -281,7 +348,12 @@ function App() {
   }, [auth, selectedFromLatestData?.id]);
 
   useEffect(() => {
-    if (!auth || !selectedFromLatestData || selectedFromLatestData.analysis) {
+    if (
+      !auth ||
+      auth.user.role !== "ADMIN" ||
+      !selectedFromLatestData ||
+      selectedFromLatestData.analysis
+    ) {
       return;
     }
 
@@ -419,6 +491,11 @@ function App() {
       return;
     }
 
+    if (!isAdmin && selectedFromLatestData.status === "CLOSED") {
+      showError("Closed tickets are read-only");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -488,6 +565,9 @@ function App() {
         currentTicket.id === ticket.id ? { ...currentTicket, unread: false } : currentTicket
       )
     );
+    setTicketNotifications((currentNotifications) =>
+      currentNotifications.filter((notification) => notification.id !== ticket.id)
+    );
 
     void markTicketRead(auth.token, ticket.id)
       .then(() => {
@@ -499,6 +579,9 @@ function App() {
         setSelectedTicket((currentTicket) =>
           currentTicket?.id === ticket.id ? { ...currentTicket, unread: false } : currentTicket
         );
+        setTicketNotifications((currentNotifications) =>
+          currentNotifications.filter((notification) => notification.id !== ticket.id)
+        );
       })
       .catch((err: Error) => showError(err.message));
   };
@@ -506,6 +589,21 @@ function App() {
   const handleSelectTicket = (ticket: Ticket) => {
     setSelectedTicket(ticket.unread ? { ...ticket, unread: false } : ticket);
     markTicketAsRead(ticket);
+  };
+
+  const handleSelectNotification = async (ticket: Ticket) => {
+    if (!auth) {
+      return;
+    }
+
+    setShowNotifications(false);
+
+    try {
+      const result = await getTicket(auth.token, ticket.id);
+      handleSelectTicket({ ...result.ticket, unread: true });
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Could not load notification ticket");
+    }
   };
 
   const logout = () => {
@@ -526,6 +624,47 @@ function App() {
           <div className="account">
             <span>{auth.user.name}</span>
             <strong>{auth.user.role}</strong>
+            {auth.user.role === "USER" && (
+              <div className="notificationArea">
+                <button
+                  type="button"
+                  className={
+                    ticketNotifications.length > 0
+                      ? "notificationButton active"
+                      : "notificationButton"
+                  }
+                  aria-label="Ticket notifications"
+                  onClick={() => setShowNotifications((current) => !current)}
+                >
+                  <span className="notificationIcon" aria-hidden="true">
+                    !
+                  </span>
+                  {ticketNotifications.length > 0 && (
+                    <span className="notificationCount">{ticketNotifications.length}</span>
+                  )}
+                </button>
+                {showNotifications && (
+                  <div className="notificationMenu">
+                    <div className="notificationMenuHeader">Notifications</div>
+                    {ticketNotifications.length === 0 ? (
+                      <p>No new messages.</p>
+                    ) : (
+                      ticketNotifications.map((ticket) => (
+                        <button
+                          type="button"
+                          key={ticket.id}
+                          className="notificationItem"
+                          onClick={() => void handleSelectNotification(ticket)}
+                        >
+                          <span>{ticket.title}</span>
+                          <strong>New message</strong>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             <button type="button" onClick={logout}>
               Sign out
             </button>
@@ -624,6 +763,7 @@ function App() {
                 hasMore={ticketHasMore}
                 loading={loading}
                 onLoadMore={() => void handleLoadMoreTickets()}
+                showCategory={false}
               />
             </div>
           )}
@@ -648,6 +788,7 @@ function App() {
                 hasMore={adminHasMore}
                 loading={loading}
                 onLoadMore={() => void handleLoadMoreAdminTickets()}
+                showCategory
               />
             </div>
           )}
@@ -658,6 +799,8 @@ function App() {
               messages={ticketMessages}
               messageBody={messageBody}
               isAdminView={isAdmin && Boolean(selectedFromLatestData?.user)}
+              showAnalysis={isAdmin}
+              readOnly={!isAdmin && selectedFromLatestData?.status === "CLOSED"}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
               onMessageBodyChange={setMessageBody}
@@ -688,7 +831,8 @@ function TicketList({
   emptyText,
   hasMore,
   loading,
-  onLoadMore
+  onLoadMore,
+  showCategory
 }: {
   title: string;
   tickets: Ticket[];
@@ -707,6 +851,7 @@ function TicketList({
   hasMore: boolean;
   loading: boolean;
   onLoadMore: () => void;
+  showCategory: boolean;
 }) {
   return (
     <section className="panel">
@@ -729,10 +874,10 @@ function TicketList({
               value={statusFilter}
               onChange={(event) => onStatusFilterChange(event.target.value as StatusFilter)}
             >
-              <option value="ALL">All statuses</option>
+              <option value="ALL">ALL STATUSES</option>
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {formatStatus(status)}
                 </option>
               ))}
             </select>
@@ -745,7 +890,7 @@ function TicketList({
               value={priorityFilter}
               onChange={(event) => onPriorityFilterChange(event.target.value as PriorityFilter)}
             >
-              <option value="ALL">All priorities</option>
+              <option value="ALL">ALL PRIORITIES</option>
               {priorityOptions.map((priority) => (
                 <option key={priority} value={priority}>
                   {formatPriority(priority)}
@@ -777,7 +922,15 @@ function TicketList({
               {isUnread(ticket) && <strong className="unreadMarker">New</strong>}
             </span>
             <small>
-              {ticket.status} - {formatPriority(ticket.priority)}
+              <span>
+                {formatStatus(ticket.status)}
+              </span>
+              <strong className={`priorityBadge priority-${ticket.priority.toLowerCase()}`}>
+                {formatPriority(ticket.priority)}
+              </strong>
+              {showCategory && (
+                <span className={categoryClassName(ticket)}>{formatCategory(ticket)}</span>
+              )}
             </small>
           </button>
         ))}
@@ -801,11 +954,11 @@ function TicketStatsSummary({
   onStatusFilterChange: (statusFilter: StatusFilter) => void;
 }) {
   const statItems: Array<{ label: string; count: number; filter: StatusFilter }> = [
-    { label: "Total", count: stats.total, filter: "ALL" },
-    { label: "Open", count: stats.open, filter: "OPEN" },
-    { label: "In progress", count: stats.inProgress, filter: "IN_PROGRESS" },
-    { label: "Resolved", count: stats.resolved, filter: "RESOLVED" },
-    { label: "Closed", count: stats.closed, filter: "CLOSED" }
+    { label: "TOTAL", count: stats.total, filter: "ALL" },
+    { label: "OPEN", count: stats.open, filter: "OPEN" },
+    { label: "IN PROGRESS", count: stats.inProgress, filter: "IN_PROGRESS" },
+    { label: "RESOLVED", count: stats.resolved, filter: "RESOLVED" },
+    { label: "CLOSED", count: stats.closed, filter: "CLOSED" }
   ];
 
   return (
@@ -832,6 +985,8 @@ function TicketDetail({
   messages,
   messageBody,
   isAdminView,
+  showAnalysis,
+  readOnly,
   onStatusChange,
   onPriorityChange,
   onMessageBodyChange,
@@ -842,6 +997,8 @@ function TicketDetail({
   messages: TicketMessage[];
   messageBody: string;
   isAdminView: boolean;
+  showAnalysis: boolean;
+  readOnly: boolean;
   onStatusChange: (ticketId: string, status: TicketStatus) => void;
   onPriorityChange: (ticketId: string, priority: TicketPriority) => void;
   onMessageBodyChange: (body: string) => void;
@@ -871,13 +1028,27 @@ function TicketDetail({
     <section className="panel detail">
       <div className="panelHeader">
         <h2>{ticket.title}</h2>
-        <span>{ticket.status}</span>
+        <span className={`statusBadge status-${ticket.status.toLowerCase()}`}>
+          {formatStatus(ticket.status)}
+        </span>
       </div>
       <p>{ticket.description}</p>
       <dl>
+        {showAnalysis && (
+          <div>
+            <dt>Category</dt>
+            <dd>
+              <span className={categoryClassName(ticket)}>{formatCategory(ticket)}</span>
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Priority</dt>
-          <dd>{formatPriority(ticket.priority)}</dd>
+          <dd>
+            <span className={`priorityBadge priority-${ticket.priority.toLowerCase()}`}>
+              {formatPriority(ticket.priority)}
+            </span>
+          </dd>
         </div>
         <div>
           <dt>Created</dt>
@@ -904,7 +1075,7 @@ function TicketDetail({
             >
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {formatStatus(status)}
                 </option>
               ))}
             </select>
@@ -928,12 +1099,15 @@ function TicketDetail({
         </div>
       )}
 
-      {ticket.analysis && (
+      {showAnalysis && ticket.analysis && (
         <div className="analysis">
           <h3>AI Analysis</h3>
           <p>{ticket.analysis.summary}</p>
           <span>
-            {ticket.analysis.category} - {formatPriority(ticket.analysis.priority)}
+            {ticket.analysis.category} -{" "}
+            <strong className={`priorityBadge priority-${ticket.analysis.priority.toLowerCase()}`}>
+              {formatPriority(ticket.analysis.priority)}
+            </strong>
           </span>
         </div>
       )}
@@ -959,19 +1133,23 @@ function TicketDetail({
             </article>
           ))}
         </div>
-        <form onSubmit={onMessageSubmit} className="messageForm">
-          <label>
-            Reply
-            <textarea
-              rows={4}
-              value={messageBody}
-              onChange={(event) => onMessageBodyChange(event.target.value)}
-            />
-          </label>
-          <button type="submit" disabled={loading || messageBody.trim().length === 0}>
-            Send message
-          </button>
-        </form>
+        {readOnly ? (
+          <p className="empty readOnlyNotice">Closed tickets are read-only.</p>
+        ) : (
+          <form onSubmit={onMessageSubmit} className="messageForm">
+            <label>
+              Reply
+              <textarea
+                rows={4}
+                value={messageBody}
+                onChange={(event) => onMessageBodyChange(event.target.value)}
+              />
+            </label>
+            <button type="submit" disabled={loading || messageBody.trim().length === 0}>
+              Send message
+            </button>
+          </form>
+        )}
       </div>
     </section>
   );

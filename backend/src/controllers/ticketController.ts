@@ -1,12 +1,13 @@
 import type { Response } from "express";
-import { analyzeTicketWithAi } from "../services/aiAnalysisService.js";
 import type { AuthenticatedRequest } from "../types/authenticatedRequest.js";
 import {
   createTicket,
   getUserTicketById,
+  listUserTicketNotifications,
   listUserTickets,
   markUserTicketAsRead
 } from "../services/ticketService.js";
+import { publishTicketAnalysisJob } from "../services/ticketAnalysisQueueService.js";
 
 const ticketStatuses = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 const ticketPriorities = ["UNASSIGNED", "LOW", "MEDIUM", "HIGH", "URGENT"] as const;
@@ -109,12 +110,8 @@ export const createTicketController = async (req: AuthenticatedRequest, res: Res
       description: trimmedDescription
     });
 
-    void analyzeTicketWithAi({
-      ticketId: ticket.id,
-      title: ticket.title,
-      description: ticket.description
-    }).catch((error) => {
-      console.error("AI ticket analysis failed", error);
+    void publishTicketAnalysisJob(ticket.id).catch((error) => {
+      console.error("Ticket analysis job publish failed", error);
     });
 
     return res.status(201).json({ ticket });
@@ -177,6 +174,24 @@ export const getTicketController = async (req: AuthenticatedRequest, res: Respon
     return res.status(200).json({ ticket });
   } catch {
     return res.status(500).json({ message: "Could not load ticket" });
+  }
+};
+
+export const listTicketNotificationsController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  const userId = getUserId(req);
+
+  if (!userId) {
+    return res.status(401).json({ message: "Authentication is required" });
+  }
+
+  try {
+    const notifications = await listUserTicketNotifications(userId);
+    return res.status(200).json({ notifications });
+  } catch {
+    return res.status(500).json({ message: "Could not load ticket notifications" });
   }
 };
 

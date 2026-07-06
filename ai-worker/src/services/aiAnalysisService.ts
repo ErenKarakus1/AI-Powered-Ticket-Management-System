@@ -1,11 +1,9 @@
 import OpenAI from "openai";
 import { env } from "../config/env.js";
-import { getPrisma } from "../config/prisma.js";
 
 type TicketPriorityValue = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
 type AnalyzeTicketInput = {
-  ticketId: string;
   title: string;
   description: string;
 };
@@ -18,21 +16,13 @@ type TicketAnalysisResult = {
 
 const ticketPriorities = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 
-let openAiClient: OpenAI | null = null;
+if (!env.openAiApiKey) {
+  throw new Error("OPENAI_API_KEY is required");
+}
 
-const getOpenAiClient = () => {
-  if (!env.openAiApiKey) {
-    return null;
-  }
-
-  if (!openAiClient) {
-    openAiClient = new OpenAI({
-      apiKey: env.openAiApiKey
-    });
-  }
-
-  return openAiClient;
-};
+const openAiClient = new OpenAI({
+  apiKey: env.openAiApiKey
+});
 
 const isTicketPriority = (value: unknown): value is TicketPriorityValue => {
   return typeof value === "string" && ticketPriorities.includes(value as TicketPriorityValue);
@@ -65,13 +55,7 @@ const parseTicketAnalysis = (value: string): TicketAnalysisResult | null => {
 };
 
 export const analyzeTicketWithAi = async (input: AnalyzeTicketInput) => {
-  const client = getOpenAiClient();
-
-  if (!client) {
-    return null;
-  }
-
-  const response = await client.responses.create({
+  const response = await openAiClient.responses.create({
     model: env.openAiModel,
     max_output_tokens: 250,
     input: [
@@ -116,31 +100,8 @@ export const analyzeTicketWithAi = async (input: AnalyzeTicketInput) => {
   const analysis = parseTicketAnalysis(response.output_text);
 
   if (!analysis) {
-    return null;
+    throw new Error("OpenAI returned an invalid ticket analysis payload");
   }
 
-  const prisma = getPrisma();
-
-  const [ticketAnalysis] = await prisma.$transaction([
-    prisma.ticketAnalysis.upsert({
-      where: {
-        ticketId: input.ticketId
-      },
-      update: analysis,
-      create: {
-        ticketId: input.ticketId,
-        ...analysis
-      }
-    }),
-    prisma.ticket.update({
-      where: {
-        id: input.ticketId
-      },
-      data: {
-        priority: analysis.priority
-      }
-    })
-  ]);
-
-  return ticketAnalysis;
+  return analysis;
 };

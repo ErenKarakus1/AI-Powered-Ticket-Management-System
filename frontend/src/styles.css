@@ -94,6 +94,96 @@ h2 {
   padding: 4px 8px;
 }
 
+.notificationArea {
+  position: relative;
+}
+
+.notificationButton {
+  align-items: center;
+  background: #eef2f5;
+  color: #344054;
+  display: inline-flex;
+  gap: 6px;
+  min-width: 42px;
+  padding: 0 10px;
+}
+
+.notificationButton.active {
+  background: #fff3c4;
+  color: #8a4b00;
+}
+
+.notificationIcon {
+  align-items: center;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  height: 20px;
+  justify-content: center;
+  width: 20px;
+}
+
+.notificationCount {
+  background: #b45309;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  min-width: 20px;
+  padding: 2px 6px;
+  text-align: center;
+}
+
+.notificationMenu {
+  background: #ffffff;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(28, 36, 48, 0.16);
+  display: grid;
+  gap: 8px;
+  max-width: 320px;
+  min-width: 280px;
+  padding: 10px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+}
+
+.notificationMenuHeader {
+  color: #344054;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.notificationMenu p {
+  color: #667085;
+  margin-bottom: 0;
+}
+
+.notificationItem {
+  background: #fff8eb;
+  border: 1px solid #efd29b;
+  color: #1c2430;
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  min-height: 54px;
+  padding: 8px;
+  text-align: left;
+}
+
+.notificationItem span {
+  font-weight: 800;
+}
+
+.notificationItem strong {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .notice {
   background: #e8f7ee;
   border: 1px solid #a8dfba;
@@ -292,7 +382,63 @@ textarea {
 }
 
 .ticketItem small {
+  align-items: center;
   color: #667085;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.priorityBadge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 8px;
+}
+
+.priority-urgent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.priority-high {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.priority-medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.priority-low {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.priority-unassigned {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.categoryBadge {
+  background: #f3e8ff;
+  border: 1px solid #e9d5ff;
+  border-radius: 999px;
+  color: #6b21a8;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 8px;
+}
+
+.categoryBadge.empty {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #6b7280;
 }
 
 .loadMoreButton {
@@ -389,6 +535,33 @@ dd {
   padding: 4px 8px;
 }
 
+.panelHeader .statusBadge {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.statusBadge.status-open {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.statusBadge.status-in_progress {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusBadge.status-resolved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusBadge.status-closed {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .messageList {
   display: grid;
   gap: 10px;
@@ -456,6 +629,13 @@ dd {
   gap: 10px;
 }
 
+.readOnlyNotice {
+  background: #f8fafc;
+  border: 1px solid #dce3ec;
+  border-radius: 8px;
+  padding: 10px;
+}
+
 @media (max-width: 1100px) {
   .workspace {
     grid-template-columns: 1fr 1fr;
@@ -471,6 +651,14 @@ dd {
   .account {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .notificationMenu {
+    left: 0;
+    max-width: none;
+    min-width: 0;
+    right: auto;
+    width: 100%;
   }
 
   .workspace {

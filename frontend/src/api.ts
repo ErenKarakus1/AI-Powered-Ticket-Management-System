@@ -179,6 +179,12 @@ export const markTicketRead = (token: string, id: string) => {
   );
 };
 
+export const listTicketNotifications = (token: string) => {
+  return request<{ notifications: Ticket[] }>("/tickets/notifications", {
+    headers: authHeaders(token)
+  });
+};
+
 export const listAdminTickets = (
   token: string,
   input: {

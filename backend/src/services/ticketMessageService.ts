@@ -39,6 +39,21 @@ export const userCanAccessTicket = async (userId: string, ticketId: string) => {
   return Boolean(ticket);
 };
 
+export const getUserTicketForMessaging = async (userId: string, ticketId: string) => {
+  const prisma = getPrisma();
+
+  return prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      userId
+    },
+    select: {
+      id: true,
+      status: true
+    }
+  });
+};
+
 export const ticketExists = async (ticketId: string) => {
   const prisma = getPrisma();
 
