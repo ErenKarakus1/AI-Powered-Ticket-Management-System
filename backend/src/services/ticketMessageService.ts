@@ -67,6 +67,22 @@ export const ticketExists = async (ticketId: string) => {
   return Boolean(ticket);
 };
 
+export const adminCanAccessTicket = async (adminId: string, ticketId: string) => {
+  const prisma = getPrisma();
+
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      OR: [{ assignedAdminId: null }, { assignedAdminId: adminId }]
+    },
+    select: {
+      id: true
+    }
+  });
+
+  return Boolean(ticket);
+};
+
 export const listTicketMessages = async (ticketId: string) => {
   const prisma = getPrisma();
 

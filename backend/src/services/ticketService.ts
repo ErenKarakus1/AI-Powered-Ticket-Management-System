@@ -13,16 +13,19 @@ type TicketAssignmentFilterValue = "ALL" | "UNASSIGNED" | "MINE";
 type UpdateTicketStatusInput = {
   ticketId: string;
   status: TicketStatusValue;
+  adminId: string;
 };
 
 type UpdateTicketPriorityInput = {
   ticketId: string;
   priority: TicketPriorityValue;
+  adminId: string;
 };
 
 type UpdateTicketAssignmentInput = {
   ticketId: string;
   adminId: string | null;
+  requestingAdminId: string;
 };
 
 type PaginationInput = {
@@ -327,11 +330,26 @@ export const getTicketById = async (ticketId: string) => {
   });
 };
 
+export const getAccessibleTicketById = async (ticketId: string, adminId: string) => {
+  const prisma = getPrisma();
+
+  return prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      OR: [{ assignedAdminId: null }, { assignedAdminId: adminId }]
+    },
+    select: adminTicketSelect
+  });
+};
+
 export const updateTicketStatus = async (input: UpdateTicketStatusInput) => {
   const prisma = getPrisma();
 
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: input.ticketId },
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: input.ticketId,
+      OR: [{ assignedAdminId: null }, { assignedAdminId: input.adminId }]
+    },
     select: { id: true }
   });
 
@@ -344,15 +362,18 @@ export const updateTicketStatus = async (input: UpdateTicketStatusInput) => {
     data: { status: input.status },
     select: { id: true }
   }).then(() => {
-    return getTicketById(input.ticketId);
+    return getAccessibleTicketById(input.ticketId, input.adminId);
   });
 };
 
 export const updateTicketPriority = async (input: UpdateTicketPriorityInput) => {
   const prisma = getPrisma();
 
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: input.ticketId },
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: input.ticketId,
+      OR: [{ assignedAdminId: null }, { assignedAdminId: input.adminId }]
+    },
     select: { id: true }
   });
 
@@ -365,15 +386,18 @@ export const updateTicketPriority = async (input: UpdateTicketPriorityInput) => 
     data: { priority: input.priority },
     select: { id: true }
   }).then(() => {
-    return getTicketById(input.ticketId);
+    return getAccessibleTicketById(input.ticketId, input.adminId);
   });
 };
 
 export const updateTicketAssignment = async (input: UpdateTicketAssignmentInput) => {
   const prisma = getPrisma();
 
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: input.ticketId },
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: input.ticketId,
+      OR: [{ assignedAdminId: null }, { assignedAdminId: input.requestingAdminId }]
+    },
     select: {
       id: true,
       assignedAdminId: true
@@ -385,7 +409,7 @@ export const updateTicketAssignment = async (input: UpdateTicketAssignmentInput)
   }
 
   if (ticket.assignedAdminId === input.adminId) {
-    return getTicketById(input.ticketId);
+    return getAccessibleTicketById(input.ticketId, input.requestingAdminId);
   }
 
   return prisma.ticket.update({
@@ -396,7 +420,7 @@ export const updateTicketAssignment = async (input: UpdateTicketAssignmentInput)
     },
     select: { id: true }
   }).then(() => {
-    return getTicketById(input.ticketId);
+    return getAccessibleTicketById(input.ticketId, input.requestingAdminId);
   });
 };
 

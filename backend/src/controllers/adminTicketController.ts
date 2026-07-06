@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import type { AuthenticatedRequest } from "../types/authenticatedRequest.js";
 import {
-  getTicketById,
+  getAccessibleTicketById,
   getTicketStats,
   listAllTickets,
   updateTicketAssignment,
@@ -138,7 +138,8 @@ export const updateAdminTicketAssignmentController = async (
   try {
     const ticket = await updateTicketAssignment({
       ticketId: id,
-      adminId: assignedToMe ? adminId : null
+      adminId: assignedToMe ? adminId : null,
+      requestingAdminId: adminId
     });
 
     if (!ticket) {
@@ -153,13 +154,18 @@ export const updateAdminTicketAssignmentController = async (
 
 export const getAdminTicketController = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const adminId = req.user?.userId;
+
+  if (!adminId) {
+    return res.status(401).json({ message: "Authentication is required" });
+  }
 
   if (!isString(id)) {
     return res.status(400).json({ message: "Ticket id is required" });
   }
 
   try {
-    const ticket = await getTicketById(id);
+    const ticket = await getAccessibleTicketById(id, adminId);
 
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found" });
@@ -173,9 +179,14 @@ export const getAdminTicketController = async (req: AuthenticatedRequest, res: R
 
 export const updateAdminTicketStatusController = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const adminId = req.user?.userId;
   const { status } = req.body as {
     status?: unknown;
   };
+
+  if (!adminId) {
+    return res.status(401).json({ message: "Authentication is required" });
+  }
 
   if (!isString(id)) {
     return res.status(400).json({ message: "Ticket id is required" });
@@ -194,7 +205,8 @@ export const updateAdminTicketStatusController = async (req: AuthenticatedReques
   try {
     const ticket = await updateTicketStatus({
       ticketId: id,
-      status
+      status,
+      adminId
     });
 
     if (!ticket) {
@@ -212,9 +224,14 @@ export const updateAdminTicketPriorityController = async (
   res: Response
 ) => {
   const { id } = req.params;
+  const adminId = req.user?.userId;
   const { priority } = req.body as {
     priority?: unknown;
   };
+
+  if (!adminId) {
+    return res.status(401).json({ message: "Authentication is required" });
+  }
 
   if (!isString(id)) {
     return res.status(400).json({ message: "Ticket id is required" });
@@ -233,7 +250,8 @@ export const updateAdminTicketPriorityController = async (
   try {
     const ticket = await updateTicketPriority({
       ticketId: id,
-      priority
+      priority,
+      adminId
     });
 
     if (!ticket) {

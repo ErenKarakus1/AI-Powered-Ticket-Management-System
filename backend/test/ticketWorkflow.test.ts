@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import type { Response } from "express";
 import { getPrisma } from "../src/config/prisma.js";
-import { createUserTicketMessageController } from "../src/controllers/ticketMessageController.js";
+import {
+  getAdminTicketController,
+  updateAdminTicketAssignmentController,
+  updateAdminTicketPriorityController,
+  updateAdminTicketStatusController
+} from "../src/controllers/adminTicketController.js";
+import {
+  createAdminTicketMessageController,
+  createUserTicketMessageController,
+  listAdminTicketMessagesController
+} from "../src/controllers/ticketMessageController.js";
 import type { AuthenticatedRequest } from "../src/types/authenticatedRequest.js";
 import {
   createTicket,
@@ -137,7 +147,8 @@ describe("ticket user workflow", () => {
 
     const claimedTicket = await updateTicketAssignment({
       ticketId: ticket.id,
-      adminId
+      adminId,
+      requestingAdminId: adminId
     });
 
     assert.ok(claimedTicket?.assignedAt);
@@ -188,7 +199,8 @@ describe("ticket user workflow", () => {
 
     const claimedTicket = await updateTicketAssignment({
       ticketId: ticket.id,
-      adminId
+      adminId,
+      requestingAdminId: adminId
     });
 
     assert.ok(claimedTicket);
@@ -197,7 +209,8 @@ describe("ticket user workflow", () => {
 
     const repeatedClaim = await updateTicketAssignment({
       ticketId: ticket.id,
-      adminId
+      adminId,
+      requestingAdminId: adminId
     });
     assert.ok(repeatedClaim?.assignedAt);
     assert.equal(repeatedClaim.assignedAt.getTime(), claimedTicket.assignedAt?.getTime());
@@ -221,7 +234,8 @@ describe("ticket user workflow", () => {
 
     const releasedTicket = await updateTicketAssignment({
       ticketId: ticket.id,
-      adminId: null
+      adminId: null,
+      requestingAdminId: adminId
     });
 
     assert.ok(releasedTicket);
@@ -238,7 +252,8 @@ describe("ticket user workflow", () => {
 
     await updateTicketAssignment({
       ticketId: ticket.id,
-      adminId: otherAdminId
+      adminId: otherAdminId,
+      requestingAdminId: otherAdminId
     });
 
     const adminQueue = await listAllTickets(
@@ -257,6 +272,99 @@ describe("ticket user workflow", () => {
       otherAdminQueue.tickets.some((adminTicket) => adminTicket.id === ticket.id),
       true
     );
+  });
+
+  it("blocks direct admin access to tickets assigned to another admin", async () => {
+    const ticket = await createTicket({
+      userId,
+      title: "Direct other admin access check",
+      description: "Direct admin endpoints should not expose tickets claimed by someone else."
+    });
+
+    await updateTicketAssignment({
+      ticketId: ticket.id,
+      adminId: otherAdminId,
+      requestingAdminId: otherAdminId
+    });
+
+    const getResponse = makeMockResponse();
+    await getAdminTicketController(
+      {
+        params: { id: ticket.id },
+        user: { userId: adminId, role: "ADMIN" }
+      } as unknown as AuthenticatedRequest,
+      getResponse as unknown as Response
+    );
+    assert.equal(getResponse.statusCode, 404);
+
+    const statusResponse = makeMockResponse();
+    await updateAdminTicketStatusController(
+      {
+        params: { id: ticket.id },
+        user: { userId: adminId, role: "ADMIN" },
+        body: { status: "IN_PROGRESS" }
+      } as unknown as AuthenticatedRequest,
+      statusResponse as unknown as Response
+    );
+    assert.equal(statusResponse.statusCode, 404);
+
+    const priorityResponse = makeMockResponse();
+    await updateAdminTicketPriorityController(
+      {
+        params: { id: ticket.id },
+        user: { userId: adminId, role: "ADMIN" },
+        body: { priority: "URGENT" }
+      } as unknown as AuthenticatedRequest,
+      priorityResponse as unknown as Response
+    );
+    assert.equal(priorityResponse.statusCode, 404);
+
+    const assignmentResponse = makeMockResponse();
+    await updateAdminTicketAssignmentController(
+      {
+        params: { id: ticket.id },
+        user: { userId: adminId, role: "ADMIN" },
+        body: { assignedToMe: true }
+      } as unknown as AuthenticatedRequest,
+      assignmentResponse as unknown as Response
+    );
+    assert.equal(assignmentResponse.statusCode, 404);
+
+    const listMessagesResponse = makeMockResponse();
+    await listAdminTicketMessagesController(
+      {
+        params: { id: ticket.id },
+        user: { userId: adminId, role: "ADMIN" }
+      } as unknown as AuthenticatedRequest,
+      listMessagesResponse as unknown as Response
+    );
+    assert.equal(listMessagesResponse.statusCode, 404);
+
+    const createMessageResponse = makeMockResponse();
+    await createAdminTicketMessageController(
+      {
+        params: { id: ticket.id },
+        user: { userId: adminId, role: "ADMIN" },
+        body: { body: "I should not be able to write here." }
+      } as unknown as AuthenticatedRequest,
+      createMessageResponse as unknown as Response
+    );
+    assert.equal(createMessageResponse.statusCode, 404);
+
+    const unchangedTicket = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticket.id },
+      select: {
+        status: true,
+        priority: true,
+        assignedAdminId: true,
+        messages: { select: { id: true } }
+      }
+    });
+
+    assert.equal(unchangedTicket.status, "OPEN");
+    assert.equal(unchangedTicket.priority, "UNASSIGNED");
+    assert.equal(unchangedTicket.assignedAdminId, otherAdminId);
+    assert.equal(unchangedTicket.messages.length, 0);
   });
 
   it("sorts admin tickets by status, urgency, assignment, and oldest creation time", async () => {

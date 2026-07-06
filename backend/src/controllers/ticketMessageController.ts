@@ -1,9 +1,9 @@
 import type { Response } from "express";
 import {
+  adminCanAccessTicket,
   createTicketMessage,
   getUserTicketForMessaging,
   listTicketMessages,
-  ticketExists,
   userCanAccessTicket
 } from "../services/ticketMessageService.js";
 import type { AuthenticatedRequest } from "../types/authenticatedRequest.js";
@@ -105,15 +105,20 @@ export const createUserTicketMessageController = async (req: AuthenticatedReques
 
 export const listAdminTicketMessagesController = async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
+  const adminId = req.user?.userId;
+
+  if (!adminId) {
+    return res.status(401).json({ message: "Authentication is required" });
+  }
 
   if (!isString(id)) {
     return res.status(400).json({ message: "Ticket id is required" });
   }
 
   try {
-    const exists = await ticketExists(id);
+    const canAccessTicket = await adminCanAccessTicket(adminId, id);
 
-    if (!exists) {
+    if (!canAccessTicket) {
       return res.status(404).json({ message: "Ticket not found" });
     }
 
@@ -143,9 +148,9 @@ export const createAdminTicketMessageController = async (req: AuthenticatedReque
   }
 
   try {
-    const exists = await ticketExists(id);
+    const canAccessTicket = await adminCanAccessTicket(adminId, id);
 
-    if (!exists) {
+    if (!canAccessTicket) {
       return res.status(404).json({ message: "Ticket not found" });
     }
 
