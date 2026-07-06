@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   AuthResponse,
   Ticket,
+  TicketAssignmentFilter,
   TicketMessage,
   TicketPriority,
   TicketStats,
@@ -22,6 +23,7 @@ import {
   markTicketRead,
   register,
   updateAdminTicketPriority,
+  updateAdminTicketAssignment,
   updateAdminTicketStatus
 } from "./api";
 import "./styles.css";
@@ -29,9 +31,15 @@ import "./styles.css";
 type AuthMode = "login" | "register";
 type StatusFilter = "ALL" | TicketStatus;
 type PriorityFilter = "ALL" | TicketPriority;
+type AssignmentFilter = TicketAssignmentFilter;
 
 const statusOptions: TicketStatus[] = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
 const priorityOptions: TicketPriority[] = ["UNASSIGNED", "LOW", "MEDIUM", "HIGH", "URGENT"];
+const assignmentOptions: Array<{ value: AssignmentFilter; label: string }> = [
+  { value: "ALL", label: "ALL ASSIGNMENTS" },
+  { value: "UNASSIGNED", label: "UNASSIGNED" },
+  { value: "MINE", label: "ASSIGNED TO ME" }
+];
 const ticketPageSize = 10;
 const statusRank: Record<TicketStatus, number> = {
   OPEN: 0,
@@ -45,6 +53,10 @@ const priorityRank: Record<TicketPriority, number> = {
   MEDIUM: 2,
   LOW: 3,
   UNASSIGNED: 4
+};
+
+const assignmentRank = (ticket: Ticket) => {
+  return ticket.assignedAdmin || ticket.assignedAdminId ? 1 : 0;
 };
 
 const sortTickets = (items: Ticket[]) => {
@@ -61,25 +73,13 @@ const sortTickets = (items: Ticket[]) => {
       return priorityDifference;
     }
 
-    return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
-  });
-};
+    const assignmentDifference = assignmentRank(first) - assignmentRank(second);
 
-const sortTicketsByNewest = (items: Ticket[]) => {
-  return [...items].sort((first, second) => {
-    const statusDifference = statusRank[first.status] - statusRank[second.status];
-
-    if (statusDifference !== 0) {
-      return statusDifference;
+    if (assignmentDifference !== 0) {
+      return assignmentDifference;
     }
 
-    const priorityDifference = priorityRank[first.priority] - priorityRank[second.priority];
-
-    if (priorityDifference !== 0) {
-      return priorityDifference;
-    }
-
-    return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+    return new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
   });
 };
 
@@ -113,6 +113,16 @@ const formatCategory = (ticket: Ticket) => {
 
 const categoryClassName = (ticket: Ticket) => {
   return ticket.analysis?.category ? "categoryBadge" : "categoryBadge empty";
+};
+
+const notificationLabel = (ticket: Ticket) => {
+  const latestAdminMessageAt =
+    ticket.messages?.[0]?.sender.role === "ADMIN"
+      ? new Date(ticket.messages[0].createdAt).getTime()
+      : 0;
+  const assignedAt = ticket.assignedAt ? new Date(ticket.assignedAt).getTime() : 0;
+
+  return assignedAt > latestAdminMessageAt ? "Assigned" : "New message";
 };
 
 const storedAuth = () => {
@@ -159,11 +169,12 @@ function App() {
   const [ticketSearch, setTicketSearch] = useState("");
   const [adminStatusFilter, setAdminStatusFilter] = useState<StatusFilter>("ALL");
   const [adminPriorityFilter, setAdminPriorityFilter] = useState<PriorityFilter>("ALL");
+  const [adminAssignmentFilter, setAdminAssignmentFilter] = useState<AssignmentFilter>("ALL");
   const [adminSearch, setAdminSearch] = useState("");
 
   const isAdmin = auth?.user.role === "ADMIN";
   const visibleTickets = useMemo(
-    () => sortTicketsByNewest(tickets),
+    () => sortTickets(tickets),
     [tickets]
   );
   const visibleAdminTickets = useMemo(
@@ -200,7 +211,10 @@ function App() {
   const hasUserTicketFilters =
     ticketStatusFilter !== "ALL" || ticketPriorityFilter !== "ALL" || ticketSearch.trim() !== "";
   const hasAdminTicketFilters =
-    adminStatusFilter !== "ALL" || adminPriorityFilter !== "ALL" || adminSearch.trim() !== "";
+    adminStatusFilter !== "ALL" ||
+    adminPriorityFilter !== "ALL" ||
+    adminAssignmentFilter !== "ALL" ||
+    adminSearch.trim() !== "";
 
   const loadTickets = async (token = auth?.token, append = false) => {
     if (!token) {
@@ -248,6 +262,7 @@ function App() {
         offset: append ? adminNextOffset : 0,
         status: adminStatusFilter === "ALL" ? undefined : adminStatusFilter,
         priority: adminPriorityFilter === "ALL" ? undefined : adminPriorityFilter,
+        assignment: adminAssignmentFilter === "ALL" ? undefined : adminAssignmentFilter,
         search: adminSearch.trim() || undefined
       }),
       getAdminTicketStats(token)
@@ -334,7 +349,7 @@ function App() {
     void loadAdminTickets(auth.token)
       .catch((err: Error) => showError(err.message))
       .finally(() => setLoading(false));
-  }, [adminPriorityFilter, adminSearch, adminStatusFilter, auth]);
+  }, [adminAssignmentFilter, adminPriorityFilter, adminSearch, adminStatusFilter, auth]);
 
   useEffect(() => {
     if (!auth || !selectedFromLatestData) {
@@ -484,6 +499,29 @@ function App() {
     }
   };
 
+  const handleAssignmentChange = async (ticketId: string, assignedToMe: boolean) => {
+    if (!auth) {
+      return;
+    }
+
+    if (assignedToMe && selectedFromLatestData?.assignedAdminId === auth.user.id) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await updateAdminTicketAssignment(auth.token, ticketId, assignedToMe);
+      setSelectedTicket(result.ticket);
+      await loadAdminTickets(auth.token);
+      showMessage(assignedToMe ? "Ticket assigned to you" : "Ticket unassigned");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Assignment update failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -591,6 +629,15 @@ function App() {
     markTicketAsRead(ticket);
   };
 
+  const handleSelectAdminTicket = (ticket: Ticket) => {
+    if (ticket.assignedAdminId && ticket.assignedAdminId !== auth?.user.id) {
+      showError("This ticket is assigned to another admin");
+      return;
+    }
+
+    setSelectedTicket(ticket);
+  };
+
   const handleSelectNotification = async (ticket: Ticket) => {
     if (!auth) {
       return;
@@ -657,7 +704,7 @@ function App() {
                           onClick={() => void handleSelectNotification(ticket)}
                         >
                           <span>{ticket.title}</span>
-                          <strong>New message</strong>
+                          <strong>{notificationLabel(ticket)}</strong>
                         </button>
                       ))
                     )}
@@ -763,7 +810,7 @@ function App() {
                 hasMore={ticketHasMore}
                 loading={loading}
                 onLoadMore={() => void handleLoadMoreTickets()}
-                showCategory={false}
+                showCategory
               />
             </div>
           )}
@@ -778,10 +825,12 @@ function App() {
                 onStatusFilterChange={setAdminStatusFilter}
                 priorityFilter={adminPriorityFilter}
                 onPriorityFilterChange={setAdminPriorityFilter}
+                assignmentFilter={adminAssignmentFilter}
+                onAssignmentFilterChange={setAdminAssignmentFilter}
                 searchTerm={adminSearch}
                 onSearchTermChange={setAdminSearch}
                 stats={adminStats}
-                onSelect={setSelectedTicket}
+                onSelect={handleSelectAdminTicket}
                 isUnread={() => false}
                 totalCount={visibleAdminTickets.length}
                 emptyText={hasAdminTicketFilters ? "No matching tickets." : "No tickets yet."}
@@ -789,6 +838,7 @@ function App() {
                 loading={loading}
                 onLoadMore={() => void handleLoadMoreAdminTickets()}
                 showCategory
+                currentAdminId={auth.user.id}
               />
             </div>
           )}
@@ -799,10 +849,13 @@ function App() {
               messages={ticketMessages}
               messageBody={messageBody}
               isAdminView={isAdmin && Boolean(selectedFromLatestData?.user)}
+              showCategory
               showAnalysis={isAdmin}
               readOnly={!isAdmin && selectedFromLatestData?.status === "CLOSED"}
+              currentAdminId={auth.user.id}
               onStatusChange={handleStatusChange}
               onPriorityChange={handlePriorityChange}
+              onAssignmentChange={handleAssignmentChange}
               onMessageBodyChange={setMessageBody}
               onMessageSubmit={handleCreateMessage}
               loading={loading}
@@ -822,6 +875,8 @@ function TicketList({
   onStatusFilterChange,
   priorityFilter,
   onPriorityFilterChange,
+  assignmentFilter,
+  onAssignmentFilterChange,
   searchTerm,
   onSearchTermChange,
   stats,
@@ -832,7 +887,8 @@ function TicketList({
   hasMore,
   loading,
   onLoadMore,
-  showCategory
+  showCategory,
+  currentAdminId
 }: {
   title: string;
   tickets: Ticket[];
@@ -841,6 +897,8 @@ function TicketList({
   onStatusFilterChange: (statusFilter: StatusFilter) => void;
   priorityFilter?: PriorityFilter;
   onPriorityFilterChange?: (priorityFilter: PriorityFilter) => void;
+  assignmentFilter?: AssignmentFilter;
+  onAssignmentFilterChange?: (assignmentFilter: AssignmentFilter) => void;
   searchTerm: string;
   onSearchTermChange: (searchTerm: string) => void;
   stats?: TicketStats | null;
@@ -852,6 +910,7 @@ function TicketList({
   loading: boolean;
   onLoadMore: () => void;
   showCategory: boolean;
+  currentAdminId?: string;
 }) {
   return (
     <section className="panel">
@@ -899,6 +958,23 @@ function TicketList({
             </select>
           </label>
         )}
+        {assignmentFilter && onAssignmentFilterChange && (
+          <label>
+            Assignment
+            <select
+              value={assignmentFilter}
+              onChange={(event) =>
+                onAssignmentFilterChange(event.target.value as AssignmentFilter)
+              }
+            >
+              {assignmentOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           Search
           <input
@@ -914,7 +990,14 @@ function TicketList({
           <button
             type="button"
             key={ticket.id}
-            className={ticket.id === selectedId ? "ticketItem selected" : "ticketItem"}
+            className={[
+              "ticketItem",
+              ticket.id === selectedId ? "selected" : "",
+              ticket.assignedAdminId && ticket.assignedAdminId !== currentAdminId ? "locked" : ""
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            disabled={Boolean(ticket.assignedAdminId && ticket.assignedAdminId !== currentAdminId)}
             onClick={() => onSelect(ticket)}
           >
             <span>
@@ -930,6 +1013,11 @@ function TicketList({
               </strong>
               {showCategory && (
                 <span className={categoryClassName(ticket)}>{formatCategory(ticket)}</span>
+              )}
+              {showCategory && (
+                <span className="assignmentBadge">
+                  {ticket.assignedAdmin ? `Assigned to ${ticket.assignedAdmin.name}` : "Unassigned"}
+                </span>
               )}
             </small>
           </button>
@@ -985,10 +1073,13 @@ function TicketDetail({
   messages,
   messageBody,
   isAdminView,
+  showCategory,
   showAnalysis,
   readOnly,
+  currentAdminId,
   onStatusChange,
   onPriorityChange,
+  onAssignmentChange,
   onMessageBodyChange,
   onMessageSubmit,
   loading
@@ -997,10 +1088,13 @@ function TicketDetail({
   messages: TicketMessage[];
   messageBody: string;
   isAdminView: boolean;
+  showCategory: boolean;
   showAnalysis: boolean;
   readOnly: boolean;
+  currentAdminId?: string;
   onStatusChange: (ticketId: string, status: TicketStatus) => void;
   onPriorityChange: (ticketId: string, priority: TicketPriority) => void;
+  onAssignmentChange: (ticketId: string, assignedToMe: boolean) => void;
   onMessageBodyChange: (body: string) => void;
   onMessageSubmit: (event: FormEvent<HTMLFormElement>) => void;
   loading: boolean;
@@ -1034,7 +1128,7 @@ function TicketDetail({
       </div>
       <p>{ticket.description}</p>
       <dl>
-        {showAnalysis && (
+        {showCategory && (
           <div>
             <dt>Category</dt>
             <dd>
@@ -1060,6 +1154,22 @@ function TicketDetail({
             <dd>
               {ticket.user.name} - {ticket.user.email}
             </dd>
+          </div>
+        )}
+        <div>
+          <dt>Assignment</dt>
+          <dd>
+            {ticket.assignedAdmin ? (
+              <span className="assignmentBadge">Assigned to {ticket.assignedAdmin.name}</span>
+            ) : (
+              <span className="assignmentBadge empty">Unassigned</span>
+            )}
+          </dd>
+        </div>
+        {isAdminView && (
+          <div>
+            <dt>Admin access</dt>
+            <dd>{ticket.assignedAdmin ? "Assigned queue" : "Open queue"}</dd>
           </div>
         )}
       </dl>
@@ -1096,10 +1206,29 @@ function TicketDetail({
               ))}
             </select>
           </label>
+          <div className="assignmentActions">
+            <span>Assignment</span>
+            <div>
+              <button
+                type="button"
+                disabled={loading || ticket.assignedAdminId === currentAdminId}
+                onClick={() => onAssignmentChange(ticket.id, true)}
+              >
+                Assign to me
+              </button>
+              <button
+                type="button"
+                disabled={loading || !ticket.assignedAdmin}
+                onClick={() => onAssignmentChange(ticket.id, false)}
+              >
+                Unassign
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {showAnalysis && ticket.analysis && (
+      {showAnalysis && ticket.analysis?.summary && ticket.analysis.priority && (
         <div className="analysis">
           <h3>AI Analysis</h3>
           <p>{ticket.analysis.summary}</p>

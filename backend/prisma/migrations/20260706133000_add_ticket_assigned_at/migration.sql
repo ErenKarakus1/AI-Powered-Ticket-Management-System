@@ -1,0 +1,1 @@
+ALTER TABLE "Ticket" ADD COLUMN "assignedAt" TIMESTAMP(3);

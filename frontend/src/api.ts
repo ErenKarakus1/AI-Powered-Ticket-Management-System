@@ -9,6 +9,7 @@ export type User = {
 
 export type TicketStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 export type TicketPriority = "UNASSIGNED" | "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type TicketAssignmentFilter = "ALL" | "UNASSIGNED" | "MINE";
 
 export type Ticket = {
   id: string;
@@ -17,6 +18,7 @@ export type Ticket = {
   status: TicketStatus;
   priority: TicketPriority;
   userId: string;
+  assignedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   unread?: boolean;
@@ -25,14 +27,20 @@ export type Ticket = {
     name: string;
     email: string;
   };
-  analysis?: {
+  assignedAdminId?: string | null;
+  assignedAdmin?: {
     id: string;
-    ticketId: string;
+    name: string;
+    email: string;
+  } | null;
+  analysis?: {
+    id?: string;
+    ticketId?: string;
     category: string;
-    priority: TicketPriority;
-    summary: string;
-    createdAt: string;
-    updatedAt: string;
+    priority?: TicketPriority;
+    summary?: string;
+    createdAt?: string;
+    updatedAt?: string;
   } | null;
   messages?: Array<{
     createdAt: string;
@@ -192,6 +200,7 @@ export const listAdminTickets = (
     offset: number;
     status?: TicketStatus;
     priority?: TicketPriority;
+    assignment?: TicketAssignmentFilter;
     search?: string;
   }
 ) => {
@@ -206,6 +215,10 @@ export const listAdminTickets = (
 
   if (input.priority) {
     params.set("priority", input.priority);
+  }
+
+  if (input.assignment) {
+    params.set("assignment", input.assignment);
   }
 
   if (input.search) {
@@ -240,6 +253,18 @@ export const updateAdminTicketPriority = (
     method: "PATCH",
     headers: authHeaders(token),
     body: JSON.stringify({ priority })
+  });
+};
+
+export const updateAdminTicketAssignment = (
+  token: string,
+  id: string,
+  assignedToMe: boolean
+) => {
+  return request<{ ticket: Ticket }>(`/admin/tickets/${id}/assignment`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ assignedToMe })
   });
 };
 

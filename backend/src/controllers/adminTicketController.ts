@@ -4,14 +4,17 @@ import {
   getTicketById,
   getTicketStats,
   listAllTickets,
+  updateTicketAssignment,
   updateTicketPriority,
   updateTicketStatus
 } from "../services/ticketService.js";
 
 const ticketStatuses = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 const ticketPriorities = ["UNASSIGNED", "LOW", "MEDIUM", "HIGH", "URGENT"] as const;
+const ticketAssignmentFilters = ["ALL", "UNASSIGNED", "MINE"] as const;
 type TicketStatusValue = (typeof ticketStatuses)[number];
 type TicketPriorityValue = (typeof ticketPriorities)[number];
+type TicketAssignmentFilterValue = (typeof ticketAssignmentFilters)[number];
 
 const isString = (value: unknown): value is string => {
   return typeof value === "string";
@@ -45,12 +48,22 @@ const isTicketPriority = (value: string): value is TicketPriorityValue => {
   return ticketPriorities.includes(value as TicketPriorityValue);
 };
 
+const isTicketAssignmentFilter = (value: string): value is TicketAssignmentFilterValue => {
+  return ticketAssignmentFilters.includes(value as TicketAssignmentFilterValue);
+};
+
 const parseAdminTicketFilters = (
   query: AuthenticatedRequest["query"]
-): { status?: TicketStatusValue; priority?: TicketPriorityValue; search?: string } | null => {
+): {
+  status?: TicketStatusValue;
+  priority?: TicketPriorityValue;
+  search?: string;
+  assignment?: TicketAssignmentFilterValue;
+} | null => {
   const status = isString(query.status) ? query.status : undefined;
   const priority = isString(query.priority) ? query.priority : undefined;
   const search = isString(query.search) ? query.search.trim() : undefined;
+  const assignment = isString(query.assignment) ? query.assignment : undefined;
 
   if (status && !isTicketStatus(status)) {
     return null;
@@ -64,10 +77,15 @@ const parseAdminTicketFilters = (
     return null;
   }
 
+  if (assignment && !isTicketAssignmentFilter(assignment)) {
+    return null;
+  }
+
   return {
     status: status as TicketStatusValue | undefined,
     priority: priority as TicketPriorityValue | undefined,
-    search: search || undefined
+    search: search || undefined,
+    assignment: assignment as TicketAssignmentFilterValue | undefined
   };
 };
 
@@ -84,7 +102,7 @@ export const listAdminTicketsController = async (req: AuthenticatedRequest, res:
   }
 
   try {
-    const result = await listAllTickets(pagination, filters);
+    const result = await listAllTickets(pagination, filters, req.user?.userId);
     return res.status(200).json({
       tickets: result.tickets,
       hasMore: result.hasMore,
@@ -92,6 +110,44 @@ export const listAdminTicketsController = async (req: AuthenticatedRequest, res:
     });
   } catch {
     return res.status(500).json({ message: "Could not load tickets" });
+  }
+};
+
+export const updateAdminTicketAssignmentController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  const { id } = req.params;
+  const { assignedToMe } = req.body as {
+    assignedToMe?: unknown;
+  };
+  const adminId = req.user?.userId;
+
+  if (!adminId) {
+    return res.status(401).json({ message: "Authentication is required" });
+  }
+
+  if (!isString(id)) {
+    return res.status(400).json({ message: "Ticket id is required" });
+  }
+
+  if (typeof assignedToMe !== "boolean") {
+    return res.status(400).json({ message: "assignedToMe must be true or false" });
+  }
+
+  try {
+    const ticket = await updateTicketAssignment({
+      ticketId: id,
+      adminId: assignedToMe ? adminId : null
+    });
+
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    return res.status(200).json({ ticket });
+  } catch {
+    return res.status(500).json({ message: "Could not update ticket assignment" });
   }
 };
 

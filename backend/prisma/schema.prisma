@@ -28,33 +28,38 @@ enum TicketPriority {
 }
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         UserRole @default(USER)
-  tickets      Ticket[]
-  messages     TicketMessage[]
-  ticketReads  TicketRead[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String
+  email           String          @unique
+  passwordHash    String
+  role            UserRole        @default(USER)
+  tickets         Ticket[]
+  assignedTickets Ticket[]        @relation("TicketAssignment")
+  messages        TicketMessage[]
+  ticketReads     TicketRead[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }
 
 model Ticket {
-  id          String         @id @default(uuid()) @db.Uuid
-  title       String
-  description String
-  status      TicketStatus   @default(OPEN)
-  priority    TicketPriority @default(UNASSIGNED)
-  userId      String         @db.Uuid
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analysis    TicketAnalysis?
-  messages    TicketMessage[]
-  reads       TicketRead[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id              String          @id @default(uuid()) @db.Uuid
+  title           String
+  description     String
+  status          TicketStatus    @default(OPEN)
+  priority        TicketPriority  @default(UNASSIGNED)
+  userId          String          @db.Uuid
+  assignedAdminId String?         @db.Uuid
+  assignedAt      DateTime?
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedAdmin   User?           @relation("TicketAssignment", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  analysis        TicketAnalysis?
+  messages        TicketMessage[]
+  reads           TicketRead[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([userId])
+  @@index([assignedAdminId])
   @@index([status])
 }
 

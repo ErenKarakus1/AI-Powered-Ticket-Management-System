@@ -3,6 +3,7 @@ import {
   getAdminTicketController,
   getTicketStatsController,
   listAdminTicketsController,
+  updateAdminTicketAssignmentController,
   updateAdminTicketPriorityController,
   updateAdminTicketStatusController
 } from "../controllers/adminTicketController.js";
@@ -20,6 +21,7 @@ router.get("/admin/tickets/stats", authMiddleware, adminMiddleware, getTicketSta
 router.get("/admin/tickets/:id", authMiddleware, adminMiddleware, getAdminTicketController);
 router.patch("/admin/tickets/:id/status", authMiddleware, adminMiddleware, updateAdminTicketStatusController);
 router.patch("/admin/tickets/:id/priority", authMiddleware, adminMiddleware, updateAdminTicketPriorityController);
+router.patch("/admin/tickets/:id/assignment", authMiddleware, adminMiddleware, updateAdminTicketAssignmentController);
 router.get("/admin/tickets/:id/messages", authMiddleware, adminMiddleware, listAdminTicketMessagesController);
 router.post("/admin/tickets/:id/messages", authMiddleware, adminMiddleware, createAdminTicketMessageController);
 
