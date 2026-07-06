@@ -614,10 +614,7 @@ export const getTicketStats = async (adminId: string) => {
   const prisma = getPrisma();
 
   const adminTicketFilter = {
-    OR: [
-      { assignedAdminId: null },
-      { assignedAdminId: adminId }
-    ]
+    OR: [{ assignedAdminId: null }, { assignedAdminId: adminId }]
   };
 
   const [
@@ -627,7 +624,7 @@ export const getTicketStats = async (adminId: string) => {
     resolvedTicketsCount,
     closedTicketsCount
   ] = await Promise.all([
-    prisma.ticket.count({ where: adminTicketFilter}),
+    prisma.ticket.count({ where: adminTicketFilter }),
     prisma.ticket.count({ where: { ...adminTicketFilter, status: "OPEN" } }),
     prisma.ticket.count({ where: { ...adminTicketFilter, status: "IN_PROGRESS" } }),
     prisma.ticket.count({ where: { ...adminTicketFilter, status: "RESOLVED" } }),

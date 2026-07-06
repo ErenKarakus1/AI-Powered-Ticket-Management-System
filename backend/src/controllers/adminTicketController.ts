@@ -266,9 +266,11 @@ export const updateAdminTicketPriorityController = async (
 
 export const getTicketStatsController = async (req: AuthenticatedRequest, res: Response) => {
   const adminId = req.user?.userId;
+
   if (!adminId) {
-      return res.status(401).json({ message: "Authentication is required" });
+    return res.status(401).json({ message: "Authentication is required" });
   }
+
   try {
     const ticketStats = await getTicketStats(adminId);
     return res.status(200).json({ ticketStats });

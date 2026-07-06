@@ -4,6 +4,7 @@ import type { Response } from "express";
 import { getPrisma } from "../src/config/prisma.js";
 import {
   getAdminTicketController,
+  getTicketStatsController,
   updateAdminTicketAssignmentController,
   updateAdminTicketPriorityController,
   updateAdminTicketStatusController
@@ -48,6 +49,29 @@ const makeMockResponse = () => {
   };
 
   return response;
+};
+
+const getStatsForAdmin = async (id: string) => {
+  const response = makeMockResponse();
+
+  await getTicketStatsController(
+    {
+      user: { userId: id, role: "ADMIN" }
+    } as unknown as AuthenticatedRequest,
+    response as unknown as Response
+  );
+
+  assert.equal(response.statusCode, 200);
+
+  return (response.body as {
+    ticketStats: {
+      total: number;
+      open: number;
+      inProgress: number;
+      resolved: number;
+      closed: number;
+    };
+  }).ticketStats;
 };
 
 before(async () => {
@@ -365,6 +389,61 @@ describe("ticket user workflow", () => {
     assert.equal(unchangedTicket.priority, "UNASSIGNED");
     assert.equal(unchangedTicket.assignedAdminId, otherAdminId);
     assert.equal(unchangedTicket.messages.length, 0);
+  });
+
+  it("counts only unassigned tickets and tickets assigned to the current admin in admin stats", async () => {
+    const adminStatsBefore = await getStatsForAdmin(adminId);
+    const otherAdminStatsBefore = await getStatsForAdmin(otherAdminId);
+
+    const unassignedOpen = await createTicket({
+      userId,
+      title: "Stats unassigned open",
+      description: "Both admins should count this ticket."
+    });
+    const mineInProgress = await createTicket({
+      userId,
+      title: "Stats assigned to admin",
+      description: "Only the first admin should count this ticket."
+    });
+    const otherResolved = await createTicket({
+      userId,
+      title: "Stats assigned to other admin",
+      description: "Only the second admin should count this ticket."
+    });
+
+    await prisma.ticket.update({
+      where: { id: unassignedOpen.id },
+      data: { status: "OPEN" }
+    });
+    await prisma.ticket.update({
+      where: { id: mineInProgress.id },
+      data: {
+        status: "IN_PROGRESS",
+        assignedAdminId: adminId,
+        assignedAt: new Date()
+      }
+    });
+    await prisma.ticket.update({
+      where: { id: otherResolved.id },
+      data: {
+        status: "RESOLVED",
+        assignedAdminId: otherAdminId,
+        assignedAt: new Date()
+      }
+    });
+
+    const adminStatsAfter = await getStatsForAdmin(adminId);
+    const otherAdminStatsAfter = await getStatsForAdmin(otherAdminId);
+
+    assert.equal(adminStatsAfter.total, adminStatsBefore.total + 2);
+    assert.equal(adminStatsAfter.open, adminStatsBefore.open + 1);
+    assert.equal(adminStatsAfter.inProgress, adminStatsBefore.inProgress + 1);
+    assert.equal(adminStatsAfter.resolved, adminStatsBefore.resolved);
+
+    assert.equal(otherAdminStatsAfter.total, otherAdminStatsBefore.total + 2);
+    assert.equal(otherAdminStatsAfter.open, otherAdminStatsBefore.open + 1);
+    assert.equal(otherAdminStatsAfter.inProgress, otherAdminStatsBefore.inProgress);
+    assert.equal(otherAdminStatsAfter.resolved, otherAdminStatsBefore.resolved + 1);
   });
 
   it("sorts admin tickets by status, urgency, assignment, and oldest creation time", async () => {
