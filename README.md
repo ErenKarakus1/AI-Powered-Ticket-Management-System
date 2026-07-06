@@ -1,30 +1,55 @@
 # AI-Powered Ticket Management System
 
-A full-stack support ticket platform for portfolio and internship applications.
+A full-stack support ticket management system built with a React frontend, an Express backend, PostgreSQL, Prisma, RabbitMQ, and an AI worker for ticket analysis.
 
-## Current Features
+This project was built as a learning and portfolio project. I used Codex while building it to help plan features, implement code, test behavior, and improve the development workflow.
 
-- React + TypeScript frontend
-- Express + TypeScript backend
-- PostgreSQL database with Prisma
-- JWT authentication
-- User registration and login
-- User ticket creation and own-ticket views
-- Admin ticket queue
-- Admin status and priority updates
-- Ticket messages between users and admins
-- AI ticket analysis on ticket creation with OpenAI
+## Features
+
+- User registration and login with JWT authentication
+- Role-based access for `USER` and `ADMIN`
+- Users can create tickets and view only their own tickets
+- Admins can view the admin queue and manage all tickets
+- Ticket status flow: `OPEN`, `IN PROGRESS`, `RESOLVED`, `CLOSED`
+- Ticket priority flow: `UNASSIGNED`, `LOW`, `MEDIUM`, `HIGH`, `URGENT`
+- Ticket messaging between users and admins
+- User notifications for unread admin messages
+- Closed tickets are read-only for users
+- Admin-only AI ticket analysis
+- AI worker consumes RabbitMQ jobs and stores ticket analysis in PostgreSQL
+- Filtering by status, priority, and search
+- Paginated ticket loading with a load-more flow
 - Health checks at `GET /health` and `GET /health/db`
+- Backend integration tests for ticket privacy, notifications, and closed-ticket behavior
 
-Redis and Docker are planned for later.
+## Tech Stack
+
+- Frontend: React, TypeScript, Vite
+- Backend: Node.js, Express, TypeScript
+- Database: PostgreSQL
+- ORM: Prisma
+- Queue: RabbitMQ
+- AI worker: TypeScript, OpenAI API
+- Auth: JWT, bcrypt
 
 ## Project Structure
 
 ```text
-backend/
-frontend/
-ai-worker/
+.
+├── backend/      Express API, Prisma schema, auth, ticket routes, tests
+├── frontend/     React application
+└── ai-worker/    RabbitMQ consumer for AI ticket analysis
 ```
+
+## Requirements
+
+- Node.js
+- PostgreSQL
+- RabbitMQ
+- npm
+- OpenAI API key for the AI worker
+
+Docker is not required for the current setup.
 
 ## Backend Setup
 
@@ -33,41 +58,21 @@ cd backend
 npm install
 copy .env.example .env
 npm run prisma:generate
-npx prisma migrate dev
+npm run prisma:migrate
 npm run dev
 ```
 
-Update `backend/.env` with your local PostgreSQL `DATABASE_URL` and `JWT_SECRET`.
-
-Optional backend queue settings:
+Update `backend/.env`:
 
 ```env
-RABBITMQ_URL="amqp://localhost:5672"
-TICKET_ANALYSIS_QUEUE="ticket.analysis"
-```
-
-If `RABBITMQ_URL` is empty, tickets are still created normally and AI analysis jobs are not queued.
-
-## AI Worker Setup
-
-The backend publishes ticket analysis jobs to RabbitMQ. The AI worker consumes those jobs, calls OpenAI, stores `TicketAnalysis`, and updates the ticket priority.
-
-```bash
-cd ai-worker
-npm install
-copy .env.example .env
-npm run dev
-```
-
-Update `ai-worker/.env` with:
-
-```env
+PORT=5000
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_ticket_management?schema=public"
+JWT_SECRET="replace-with-a-long-random-secret"
 RABBITMQ_URL="amqp://localhost:5672"
 TICKET_ANALYSIS_QUEUE="ticket.analysis"
-OPENAI_API_KEY="your-api-key"
-OPENAI_MODEL="gpt-5.4-nano"
 ```
+
+If RabbitMQ is not running, tickets can still be created, but AI analysis jobs will not be processed.
 
 ## Frontend Setup
 
@@ -83,35 +88,99 @@ Open:
 http://127.0.0.1:5173
 ```
 
-The frontend proxies `/api` requests to the backend on `http://localhost:5000`.
+The frontend proxies API requests through `/api` to the backend.
 
-## Development Commands
+## AI Worker Setup
+
+The backend publishes ticket analysis jobs to RabbitMQ. The AI worker consumes those jobs, calls OpenAI, stores `TicketAnalysis`, and updates the ticket priority.
+
+```bash
+cd ai-worker
+npm install
+copy .env.example .env
+npm run dev
+```
+
+Update `ai-worker/.env`:
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_ticket_management?schema=public"
+RABBITMQ_URL="amqp://localhost:5672"
+TICKET_ANALYSIS_QUEUE="ticket.analysis"
+OPENAI_API_KEY=""
+OPENAI_MODEL="gpt-5.4-nano"
+```
+
+Do not commit real `.env` files or API keys.
+
+## RabbitMQ
+
+Start RabbitMQ locally before running the worker. The app expects:
+
+```text
+amqp://localhost:5672
+```
+
+The default queue name is:
+
+```text
+ticket.analysis
+```
+
+## Useful Commands
 
 Backend:
 
 ```bash
 cd backend
+npm run dev
 npm run build
-npm run prisma:generate
-npx prisma migrate status
-```
-
-AI worker:
-
-```bash
-cd ai-worker
-npm run build
+npm test
+npx prisma validate
 ```
 
 Frontend:
 
 ```bash
 cd frontend
+npm run dev -- --host 127.0.0.1
 npm run build
 ```
 
-## Roles
+AI worker:
 
-Public registration always creates `USER` accounts.
+```bash
+cd ai-worker
+npm run dev
+npm run build
+```
 
-Admin accounts are created manually in the database. Users can create and view their own tickets. Admins use `/admin/tickets` and cannot use user ticket routes.
+## Admin Accounts
+
+Public registration creates `USER` accounts only.
+
+Admin accounts are created manually in the database. A local demo admin can be created with:
+
+```text
+email: admin@demo.com
+password: adminuser123
+```
+
+Use this only for local development.
+
+## Security Notes
+
+- Real `.env` files are ignored by git.
+- `CODEX.md` is ignored by git.
+- Users cannot access admin ticket routes.
+- Users cannot see AI analysis responses.
+- Users cannot reply to closed tickets.
+- Admin-only AI analysis is returned through admin ticket endpoints.
+
+## Current Limitations
+
+- No Docker setup yet
+- No Redis setup yet
+- No production deployment configuration yet
+- No password reset flow yet
+- RabbitMQ and PostgreSQL are expected to run locally
