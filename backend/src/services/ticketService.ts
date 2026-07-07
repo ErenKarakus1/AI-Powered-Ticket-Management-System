@@ -321,15 +321,6 @@ export const listAllTickets = async (
   };
 };
 
-export const getTicketById = async (ticketId: string) => {
-  const prisma = getPrisma();
-
-  return prisma.ticket.findUnique({
-    where: { id: ticketId },
-    select: adminTicketSelect
-  });
-};
-
 export const getAccessibleTicketById = async (ticketId: string, adminId: string) => {
   const prisma = getPrisma();
 
