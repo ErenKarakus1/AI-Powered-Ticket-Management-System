@@ -169,7 +169,7 @@ Admin accounts are created manually in the database.
 ## Current Limitations
 
 - No Docker setup yet
-- No Redis setup yet
+- No Redis setup yet; planned for login, registration, ticket creation, and message rate limiting
 - No production deployment configuration yet
 - No password reset flow yet
 - RabbitMQ and PostgreSQL are expected to run locally
