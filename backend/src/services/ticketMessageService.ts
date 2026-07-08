@@ -54,19 +54,6 @@ export const getUserTicketForMessaging = async (userId: string, ticketId: string
   });
 };
 
-export const ticketExists = async (ticketId: string) => {
-  const prisma = getPrisma();
-
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: ticketId },
-    select: {
-      id: true
-    }
-  });
-
-  return Boolean(ticket);
-};
-
 export const adminCanAccessTicket = async (adminId: string, ticketId: string) => {
   const prisma = getPrisma();
 
