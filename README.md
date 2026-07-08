@@ -9,7 +9,7 @@ This project was built as a learning and portfolio project. I used Codex while b
 - User registration and login with JWT authentication
 - Role-based access for `USER` and `ADMIN`
 - Users can create tickets and view only their own tickets
-- Admins can view the admin queue and manage all tickets
+- Admins can view the admin queue and manage unassigned or self-assigned tickets
 - Ticket status flow: `OPEN`, `IN PROGRESS`, `RESOLVED`, `CLOSED`
 - Ticket priority flow: `UNASSIGNED`, `LOW`, `MEDIUM`, `HIGH`, `URGENT`
 - Ticket messaging between users and admins
