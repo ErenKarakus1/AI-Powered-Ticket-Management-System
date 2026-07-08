@@ -164,6 +164,7 @@ Admin accounts are created manually in the database.
 - Users cannot access admin ticket routes.
 - Users cannot see AI analysis responses.
 - Users cannot reply to closed tickets.
+- Admins can only access unassigned tickets or tickets assigned to themselves.
 - Admin-only AI analysis is returned through admin ticket endpoints.
 
 ## Current Limitations
