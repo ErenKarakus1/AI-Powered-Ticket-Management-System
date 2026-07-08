@@ -23,6 +23,10 @@ const messageSelect = {
   }
 };
 
+const ticketIdentitySelect = {
+  id: true
+};
+
 export const userCanAccessTicket = async (userId: string, ticketId: string) => {
   const prisma = getPrisma();
 
@@ -31,9 +35,7 @@ export const userCanAccessTicket = async (userId: string, ticketId: string) => {
       id: ticketId,
       userId
     },
-    select: {
-      id: true
-    }
+    select: ticketIdentitySelect
   });
 
   return Boolean(ticket);
@@ -62,9 +64,7 @@ export const adminCanAccessTicket = async (adminId: string, ticketId: string) =>
       id: ticketId,
       OR: [{ assignedAdminId: null }, { assignedAdminId: adminId }]
     },
-    select: {
-      id: true
-    }
+    select: ticketIdentitySelect
   });
 
   return Boolean(ticket);
