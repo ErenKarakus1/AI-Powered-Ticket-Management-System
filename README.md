@@ -81,6 +81,8 @@ npm install
 npm run dev -- --host 127.0.0.1
 ```
 
+On Windows PowerShell, `npm.cmd run dev:local` starts the frontend on `127.0.0.1:5173`.
+
 Open:
 
 ```text
