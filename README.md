@@ -54,8 +54,9 @@ flowchart TD
 
     Frontend --> API[Express API]
 
-    API --> Middleware[JWT Auth, Role Checks, Rate Limiting]
-    Middleware --> Redis[(Redis)]
+    API --> Middleware[JWT Auth, Role Checks, Rate Limit Middleware]
+    Middleware -->|read and increment counter| Redis[(Redis Counter Store)]
+    Redis -->|rate limit result| Middleware
     Middleware --> Services[Ticket, Message, and Admin Services]
 
     Services --> DB[(PostgreSQL via Prisma)]
