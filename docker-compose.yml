@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ai-ticket-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_ticket_management
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_ticket_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: ai-ticket-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    container_name: ai-ticket-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ai-ticket-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 5000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_ticket_management?schema=public
+      JWT_SECRET: replace-with-a-long-random-secret
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      TICKET_ANALYSIS_QUEUE: ticket.analysis
+      REDIS_URL: redis://redis:6379
+      RATE_LIMIT_STORE: redis
+    ports:
+      - "5000:5000"
+
+  ai-worker:
+    build:
+      context: ./ai-worker
+    container_name: ai-ticket-worker
+    profiles:
+      - ai
+    depends_on:
+      backend:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_ticket_management?schema=public
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      TICKET_ANALYSIS_QUEUE: ticket.analysis
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-nano}
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: ai-ticket-frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
