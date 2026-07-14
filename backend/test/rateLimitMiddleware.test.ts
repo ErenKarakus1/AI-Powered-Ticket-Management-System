@@ -29,8 +29,9 @@ const makeMockResponse = () => {
 };
 
 describe("rate limit middleware", () => {
-  it("blocks requests after the configured IP limit", () => {
+  it("blocks requests after the configured IP limit", async () => {
     const limiter = createRateLimit({
+      scope: "test:ip",
       windowMs: 60_000,
       maxRequests: 2,
       keyType: "ip",
@@ -45,11 +46,11 @@ describe("rate limit middleware", () => {
       nextCalls.push(1);
     };
 
-    limiter(request, makeMockResponse() as unknown as Response, next);
-    limiter(request, makeMockResponse() as unknown as Response, next);
+    await limiter(request, makeMockResponse() as unknown as Response, next);
+    await limiter(request, makeMockResponse() as unknown as Response, next);
 
     const blockedResponse = makeMockResponse();
-    limiter(request, blockedResponse as unknown as Response, next);
+    await limiter(request, blockedResponse as unknown as Response, next);
 
     assert.equal(nextCalls.length, 2);
     assert.equal(blockedResponse.statusCode, 429);
@@ -57,8 +58,9 @@ describe("rate limit middleware", () => {
     assert.ok(blockedResponse.getHeader("Retry-After"));
   });
 
-  it("tracks authenticated users separately", () => {
+  it("tracks authenticated users separately", async () => {
     const limiter = createRateLimit({
+      scope: "test:user",
       windowMs: 60_000,
       maxRequests: 1,
       keyType: "user",
@@ -71,20 +73,20 @@ describe("rate limit middleware", () => {
       };
     };
 
-    limiter(
+    await limiter(
       { user: { userId: "user-a", role: "USER" }, socket: {} } as unknown as Request,
       makeMockResponse() as unknown as Response,
       nextFor("user-a")
     );
 
     const blockedResponse = makeMockResponse();
-    limiter(
+    await limiter(
       { user: { userId: "user-a", role: "USER" }, socket: {} } as unknown as Request,
       blockedResponse as unknown as Response,
       nextFor("user-a")
     );
 
-    limiter(
+    await limiter(
       { user: { userId: "user-b", role: "USER" }, socket: {} } as unknown as Request,
       makeMockResponse() as unknown as Response,
       nextFor("user-b")
@@ -92,5 +94,34 @@ describe("rate limit middleware", () => {
 
     assert.deepEqual(nextCalls, ["user-a", "user-b"]);
     assert.equal(blockedResponse.statusCode, 429);
+  });
+
+  it("returns 503 when the configured store is unavailable", async () => {
+    const limiter = createRateLimit({
+      scope: "test:unavailable",
+      windowMs: 60_000,
+      maxRequests: 1,
+      keyType: "ip",
+      message: "Too many requests",
+      store: {
+        async consume() {
+          throw new Error("store unavailable");
+        }
+      }
+    });
+    const response = makeMockResponse();
+    let nextCalled = false;
+
+    await limiter(
+      { ip: "127.0.0.1", socket: {} } as Request,
+      response as unknown as Response,
+      (() => {
+        nextCalled = true;
+      }) as NextFunction
+    );
+
+    assert.equal(nextCalled, false);
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(response.body, { message: "Rate limit service is unavailable" });
   });
 });

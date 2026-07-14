@@ -70,6 +70,8 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_ticket_management
 JWT_SECRET="replace-with-a-long-random-secret"
 RABBITMQ_URL="amqp://localhost:5672"
 TICKET_ANALYSIS_QUEUE="ticket.analysis"
+REDIS_URL="redis://localhost:6379"
+RATE_LIMIT_STORE="memory"
 ```
 
 If RabbitMQ is not running, tickets can still be created, but AI analysis jobs will not be processed.
@@ -113,6 +115,15 @@ OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-5.4-nano"
 ```
 
+
+## Redis
+
+Rate limiting uses an in-memory store by default. To use Redis-backed counters, start Redis locally and set:
+
+```env
+RATE_LIMIT_STORE="redis"
+REDIS_URL="redis://localhost:6379"
+```
 
 ## RabbitMQ
 
@@ -173,7 +184,7 @@ Admin accounts are created manually in the database.
 ## Current Limitations
 
 - No Docker setup yet
-- No Redis-backed shared rate limit store yet
+- Redis must be started manually for Redis-backed rate limiting
 - No production deployment configuration yet
 - No password reset flow yet
 - RabbitMQ and PostgreSQL are expected to run locally
