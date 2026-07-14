@@ -24,6 +24,7 @@ services:
       - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -33,12 +34,13 @@ services:
   redis:
     image: redis:8-alpine
     container_name: ai-ticket-redis
+    command: ["redis-server", "--requirepass", "redis-password"]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=redis-password redis-cli ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +62,7 @@ services:
       JWT_SECRET: replace-with-a-long-random-secret
       RABBITMQ_URL: amqp://rabbitmq:5672
       TICKET_ANALYSIS_QUEUE: ticket.analysis
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:redis-password@redis:6379
       RATE_LIMIT_STORE: redis
     ports:
       - "5000:5000"

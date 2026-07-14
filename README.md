@@ -64,6 +64,8 @@ RabbitMQ Management UI: http://localhost:15672
 Redis: localhost:6379
 ```
 
+Docker Redis uses `redis-password` as its local development password.
+
 RabbitMQ management login:
 
 ```text
@@ -239,7 +241,7 @@ Docker:
 ```bash
 docker compose up --build
 docker compose down
-docker compose exec redis redis-cli FLUSHALL
+docker compose exec redis sh -c "REDISCLI_AUTH=redis-password redis-cli FLUSHALL"
 ```
 
 ## Security Notes
