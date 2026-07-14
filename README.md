@@ -16,6 +16,7 @@ This project was built as a learning and portfolio project. I used Codex while b
 - User notifications for unread admin messages
 - Closed tickets are read-only for users
 - Only admins can see AI ticket analysis
+- In-memory rate limiting protects auth, ticket creation, and message endpoints
 - AI worker consumes RabbitMQ jobs and stores ticket analysis in PostgreSQL
 - Filtering by status, priority, and search
 - Paginated ticket loading with a load-more flow
@@ -172,7 +173,7 @@ Admin accounts are created manually in the database.
 ## Current Limitations
 
 - No Docker setup yet
-- No Redis setup yet; planned for login, registration, ticket creation, and message rate limiting
+- No Redis-backed shared rate limit store yet
 - No production deployment configuration yet
 - No password reset flow yet
 - RabbitMQ and PostgreSQL are expected to run locally

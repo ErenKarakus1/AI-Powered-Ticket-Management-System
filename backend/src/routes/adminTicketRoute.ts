@@ -13,6 +13,7 @@ import {
 } from "../controllers/ticketMessageController.js";
 import { adminMiddleware } from "../middleware/adminMiddleware.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { ticketMessageRateLimit } from "../middleware/rateLimitMiddleware.js";
 
 const router = Router();
 
@@ -23,6 +24,12 @@ router.patch("/admin/tickets/:id/status", authMiddleware, adminMiddleware, updat
 router.patch("/admin/tickets/:id/priority", authMiddleware, adminMiddleware, updateAdminTicketPriorityController);
 router.patch("/admin/tickets/:id/assignment", authMiddleware, adminMiddleware, updateAdminTicketAssignmentController);
 router.get("/admin/tickets/:id/messages", authMiddleware, adminMiddleware, listAdminTicketMessagesController);
-router.post("/admin/tickets/:id/messages", authMiddleware, adminMiddleware, createAdminTicketMessageController);
+router.post(
+  "/admin/tickets/:id/messages",
+  authMiddleware,
+  adminMiddleware,
+  ticketMessageRateLimit,
+  createAdminTicketMessageController
+);
 
 export default router;

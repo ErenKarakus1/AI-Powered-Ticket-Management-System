@@ -11,11 +11,21 @@ import {
   listUserTicketMessagesController
 } from "../controllers/ticketMessageController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import {
+  createTicketRateLimit,
+  ticketMessageRateLimit
+} from "../middleware/rateLimitMiddleware.js";
 import { userMiddleware } from "../middleware/userMiddleware.js";
 
 const router = Router();
 
-router.post("/tickets", authMiddleware, userMiddleware, createTicketController);
+router.post(
+  "/tickets",
+  authMiddleware,
+  userMiddleware,
+  createTicketRateLimit,
+  createTicketController
+);
 router.get("/tickets", authMiddleware, userMiddleware, listTicketsController);
 router.get(
   "/tickets/notifications",
@@ -26,6 +36,12 @@ router.get(
 router.get("/tickets/:id", authMiddleware, userMiddleware, getTicketController);
 router.patch("/tickets/:id/read", authMiddleware, userMiddleware, markTicketReadController);
 router.get("/tickets/:id/messages", authMiddleware, userMiddleware, listUserTicketMessagesController);
-router.post("/tickets/:id/messages", authMiddleware, userMiddleware, createUserTicketMessageController);
+router.post(
+  "/tickets/:id/messages",
+  authMiddleware,
+  userMiddleware,
+  ticketMessageRateLimit,
+  createUserTicketMessageController
+);
 
 export default router;
