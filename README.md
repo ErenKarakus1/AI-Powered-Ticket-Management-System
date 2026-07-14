@@ -54,19 +54,20 @@ flowchart TD
 
     Frontend --> API[Express API]
 
-    API --> Auth[JWT Auth and Role Checks]
-    API --> RateLimit[Redis Rate Limiting]
-    API --> DB[(PostgreSQL via Prisma)]
+    API --> Middleware[JWT Auth, Role Checks, Rate Limiting]
+    Middleware --> Redis[(Redis)]
+    Middleware --> Services[Ticket, Message, and Admin Services]
 
-    API --> Tickets[Ticket and Message Logic]
-    Tickets --> DB
-    Tickets --> Queue[RabbitMQ Ticket Analysis Queue]
+    Services --> DB[(PostgreSQL via Prisma)]
+    Services --> Queue[RabbitMQ Ticket Analysis Queue]
 
     Queue --> Worker[AI Worker]
     Worker --> OpenAI[OpenAI API]
+    OpenAI --> Worker
     Worker --> DB
 
-    DB --> API
+    DB --> Services
+    Services --> API
     API --> Frontend
 ```
 
