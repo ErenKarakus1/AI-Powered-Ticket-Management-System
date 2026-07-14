@@ -45,6 +45,31 @@ This project was built as a learning and portfolio project. I used Codex while b
 `-- docker-compose.yml
 ```
 
+## Workflow Diagram
+
+```mermaid
+flowchart TD
+    User[User] --> Frontend[React Frontend]
+    Admin[Admin] --> Frontend
+
+    Frontend --> API[Express API]
+
+    API --> Auth[JWT Auth and Role Checks]
+    API --> RateLimit[Redis Rate Limiting]
+    API --> DB[(PostgreSQL via Prisma)]
+
+    API --> Tickets[Ticket and Message Logic]
+    Tickets --> DB
+    Tickets --> Queue[RabbitMQ Ticket Analysis Queue]
+
+    Queue --> Worker[AI Worker]
+    Worker --> OpenAI[OpenAI API]
+    Worker --> DB
+
+    DB --> API
+    API --> Frontend
+```
+
 ## Quick Start With Docker
 
 Docker is the easiest way to run the project.
