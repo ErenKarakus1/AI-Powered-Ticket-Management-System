@@ -78,6 +78,8 @@ Docker is the easiest way to run the project.
 
 The default Docker command runs the app without the AI worker. To enable asynchronous AI ticket analysis, use the Docker With AI Worker section below.
 
+Start the default stack without the AI worker:
+
 ```bash
 docker compose up --build
 ```
