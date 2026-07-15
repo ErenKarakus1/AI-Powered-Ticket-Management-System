@@ -6,7 +6,7 @@ This project was built as a learning and portfolio project. I used Codex while b
 
 ## Demo Video
 
-[Watch the demo video](https://youtu.be/qvB7RS1BusY)
+[![Watch the demo video](https://img.youtube.com/vi/qvB7RS1BusY/maxresdefault.jpg)](https://youtu.be/qvB7RS1BusY)
 
 ## Features
 
