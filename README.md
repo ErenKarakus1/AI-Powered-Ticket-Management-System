@@ -124,6 +124,13 @@ $env:OPENAI_API_KEY="your-api-key"
 docker compose --profile ai up --build
 ```
 
+Command Prompt:
+
+```cmd
+set OPENAI_API_KEY=your-api-key
+docker compose --profile ai up --build
+```
+
 Bash:
 
 ```bash
@@ -202,10 +209,10 @@ npm install
 npm run dev -- --host 127.0.0.1
 ```
 
-On Windows PowerShell:
+If PowerShell cannot run `npm`, use the Windows command shim:
 
 ```powershell
-npm.cmd run dev:local
+npm.cmd run dev -- --host 127.0.0.1
 ```
 
 Open:
