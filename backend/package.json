@@ -8,6 +8,8 @@
     "build": "tsc",
     "test": "tsx --test \"test/**/*.test.ts\"",
     "start": "node dist/server.js",
+    "seed:admin": "node dist/scripts/seedAdmin.js",
+    "seed:admin:dev": "tsx src/scripts/seedAdmin.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

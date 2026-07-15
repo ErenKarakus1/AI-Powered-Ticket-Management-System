@@ -143,28 +143,8 @@ Public registration creates `USER` accounts only. Admin accounts must be created
 
 If Docker is running, seed or reset a demo admin from the project root:
 
-```powershell
-$script = @'
-import { randomUUID } from "node:crypto";
-import bcrypt from "bcrypt";
-import { Pool } from "pg";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const passwordHash = await bcrypt.hash("adminuser123", 12);
-
-await pool.query(
-  `insert into "User" ("id", "name", "email", "passwordHash", "role", "createdAt", "updatedAt")
-   values ($1, $2, $3, $4, $5::"UserRole", now(), now())
-   on conflict ("email")
-   do update set "name" = excluded."name", "passwordHash" = excluded."passwordHash", "role" = excluded."role", "updatedAt" = now()`,
-  [randomUUID(), "Demo Admin", "admin@demo.com", passwordHash, "ADMIN"]
-);
-
-await pool.end();
-console.log("Seeded admin@demo.com");
-'@
-$encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($script))
-docker compose exec backend sh -c "printf '%s' $encoded > /app/seed-admin.b64 && base64 -d /app/seed-admin.b64 > /app/seed-admin.mjs && node /app/seed-admin.mjs && rm /app/seed-admin.b64 /app/seed-admin.mjs"
+```bash
+docker compose exec backend npm run seed:admin
 ```
 
 Demo admin login:
@@ -173,6 +153,8 @@ Demo admin login:
 email: admin@demo.com
 password: adminuser123
 ```
+
+To customize the admin account, set `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` before running the seed command.
 
 ## Manual Backend Setup
 
@@ -184,6 +166,7 @@ npm install
 copy .env.example .env
 npm run prisma:generate
 npm run prisma:migrate
+npm run seed:admin:dev
 npm run dev
 ```
 
