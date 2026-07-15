@@ -207,7 +207,7 @@ RATE_LIMIT_STORE="memory"
 ```
 
 - `RATE_LIMIT_STORE="memory"` keeps rate-limit counters inside the backend process for simple local development.
-- `RATE_LIMIT_STORE="redis"` uses Redis-backed shared counters that survive backend restarts.
+- Set `RATE_LIMIT_STORE="redis"` to use Redis-backed shared counters that survive backend restarts.
 
 ## Manual Frontend Setup
 
