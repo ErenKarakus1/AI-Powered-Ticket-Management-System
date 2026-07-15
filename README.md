@@ -206,7 +206,8 @@ REDIS_URL="redis://localhost:6379"
 RATE_LIMIT_STORE="memory"
 ```
 
-`RATE_LIMIT_STORE="memory"` keeps rate-limit counters inside the backend process for simple local development. Set `RATE_LIMIT_STORE="redis"` when Redis is running and you want shared counters that survive backend restarts.
+`RATE_LIMIT_STORE="memory"` keeps rate-limit counters inside the backend process for simple local development.
+Set `RATE_LIMIT_STORE="redis"` when Redis is running and you want shared counters that survive backend restarts.
 
 ## Manual Frontend Setup
 
@@ -282,6 +283,7 @@ Docker:
 ```bash
 docker compose up --build
 docker compose down
+docker compose exec backend npm run seed:admin
 docker compose exec redis sh -c "REDISCLI_AUTH=redis-password redis-cli FLUSHALL"
 ```
 
