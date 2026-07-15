@@ -1,6 +1,6 @@
 # AI-Powered Ticket Management System
 
-A full-stack support ticket management system with user tickets, admin queues, ticket messaging, AI-assisted ticket analysis, Redis-backed rate limiting, and Docker support.
+A full-stack support ticket management system with user tickets, admin queues, ticket messaging, asynchronous AI-assisted ticket analysis, Redis-backed rate limiting, and Docker support.
 
 This project was built as a learning and portfolio project. I used Codex while building it to plan features, implement code, test behavior, and improve the development workflow.
 
@@ -15,7 +15,7 @@ This project was built as a learning and portfolio project. I used Codex while b
 - Ticket messaging between users and admins
 - User notifications for unread admin messages and ticket assignment
 - Closed tickets are read-only for users
-- AI worker analyzes tickets and stores category, priority, and summary
+- AI worker asynchronously analyzes tickets through RabbitMQ and stores category, priority, and summary
 - AI analysis is visible only to admins
 - Redis-backed rate limiting for auth, ticket creation, and messages
 - Filtering by status, priority, assignment, and search
@@ -206,7 +206,7 @@ REDIS_URL="redis://localhost:6379"
 RATE_LIMIT_STORE="memory"
 ```
 
-Set `RATE_LIMIT_STORE="redis"` to use Redis-backed counters.
+`RATE_LIMIT_STORE="memory"` keeps rate-limit counters inside the backend process for simple local development. Set `RATE_LIMIT_STORE="redis"` when Redis is running and you want shared counters that survive backend restarts.
 
 ## Manual Frontend Setup
 
