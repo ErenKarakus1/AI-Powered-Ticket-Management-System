@@ -4,6 +4,10 @@ A full-stack support ticket management system with user tickets, admin queues, t
 
 This project was built as a learning and portfolio project. I used Codex while building it to plan features, implement code, test behavior, and improve the development workflow.
 
+## Demo Video
+
+[Watch the demo video](https://youtu.be/qvB7RS1BusY)
+
 ## Features
 
 - User registration and login with JWT authentication
