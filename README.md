@@ -154,7 +154,31 @@ email: admin@demo.com
 password: adminuser123
 ```
 
-To customize the admin account, set `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` before running the seed command.
+To customize the admin account, set `ADMIN_NAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` in the same terminal before running the seed command.
+
+PowerShell:
+
+```powershell
+$env:ADMIN_NAME="Support Admin"
+$env:ADMIN_EMAIL="admin@example.com"
+$env:ADMIN_PASSWORD="change-this-password"
+docker compose exec backend npm run seed:admin
+```
+
+Command Prompt:
+
+```cmd
+set ADMIN_NAME=Support Admin
+set ADMIN_EMAIL=admin@example.com
+set ADMIN_PASSWORD=change-this-password
+docker compose exec backend npm run seed:admin
+```
+
+Bash:
+
+```bash
+ADMIN_NAME="Support Admin" ADMIN_EMAIL="admin@example.com" ADMIN_PASSWORD="change-this-password" docker compose exec backend npm run seed:admin
+```
 
 ## Manual Backend Setup
 
