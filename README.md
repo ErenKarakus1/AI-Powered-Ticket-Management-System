@@ -206,8 +206,8 @@ REDIS_URL="redis://localhost:6379"
 RATE_LIMIT_STORE="memory"
 ```
 
-`RATE_LIMIT_STORE="memory"` keeps rate-limit counters inside the backend process for simple local development.
-Set `RATE_LIMIT_STORE="redis"` when Redis is running and you want shared counters that survive backend restarts.
+- `RATE_LIMIT_STORE="memory"` keeps rate-limit counters inside the backend process for simple local development.
+- `RATE_LIMIT_STORE="redis"` uses Redis-backed shared counters that survive backend restarts.
 
 ## Manual Frontend Setup
 
