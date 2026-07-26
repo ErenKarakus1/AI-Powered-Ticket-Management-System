@@ -11,3 +11,7 @@ app.use(healthRoutes);
 app.use(authRoutes);
 app.use(ticketRoutes);
 app.use(adminTicketRoutes);
+
+app.use((_req, res) => {
+  return res.status(404).json({ message: "Route not found" });
+});

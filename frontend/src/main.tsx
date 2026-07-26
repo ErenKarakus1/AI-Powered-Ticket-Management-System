@@ -140,6 +140,19 @@ const storedAuth = () => {
   }
 };
 
+function NotFoundPage() {
+  return (
+    <main className="notFoundPage">
+      <section className="notFoundPanel">
+        <p className="notFoundCode">404</p>
+        <h1>Page not found</h1>
+        <p>The page you are looking for does not exist.</p>
+        <a href="/">Back to dashboard</a>
+      </section>
+    </main>
+  );
+}
+
 function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(() => storedAuth());
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -1284,8 +1297,12 @@ function TicketDetail({
   );
 }
 
+function Root() {
+  return window.location.pathname === "/" ? <App /> : <NotFoundPage />;
+}
+
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <Root />
   </React.StrictMode>
 );
