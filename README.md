@@ -1,5 +1,6 @@
 # AI-Powered Ticket Management System
 
+![CI](https://github.com/ErenKarakus1/AI-Powered-Ticket-Management-System/actions/workflows/ci.yml/badge.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
