@@ -1,5 +1,14 @@
 # AI-Powered Ticket Management System
 
+![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111111)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-8-DC382D?logo=redis&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-API-412991?logo=openai&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 A full-stack support ticket management system with user tickets, admin queues, ticket messaging, asynchronous AI-assisted ticket analysis, Redis-backed rate limiting, and Docker support.
 
 This project was built as a learning and portfolio project. I used Codex while building it to plan features, implement code, test behavior, and improve the development workflow.
