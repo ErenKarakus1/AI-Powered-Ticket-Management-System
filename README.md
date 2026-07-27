@@ -117,7 +117,7 @@ RabbitMQ management login:
 guest / guest
 ```
 
-The backend container pushes the Prisma schema to PostgreSQL on startup.
+The backend container runs Prisma migrations on startup.
 
 Stop the stack:
 
@@ -207,7 +207,7 @@ cd backend
 npm install
 copy .env.example .env
 npm run prisma:generate
-npm run prisma:push
+npm run prisma:migrate
 npm run seed:admin:dev
 npm run dev
 ```

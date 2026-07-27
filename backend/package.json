@@ -11,7 +11,7 @@
     "seed:admin": "node dist/scripts/seedAdmin.js",
     "seed:admin:dev": "tsx src/scripts/seedAdmin.ts",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
