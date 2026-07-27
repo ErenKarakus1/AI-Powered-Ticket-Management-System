@@ -3,7 +3,7 @@
 ![CI](https://github.com/ErenKarakus1/AI-Powered-Ticket-Management-System/actions/workflows/ci.yml/badge.svg)
 ![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=white&labelColor=61DAFB)
+![React](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-8-DC382D?logo=redis&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-API-412991)
