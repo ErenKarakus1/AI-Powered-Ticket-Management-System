@@ -60,8 +60,8 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
-      - name: Apply database migrations
-        run: npx prisma migrate deploy
+      - name: Push Prisma schema
+        run: npm run prisma:push
 
       - name: Build backend
         run: npm run build

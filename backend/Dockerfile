@@ -22,4 +22,4 @@ COPY prisma.config.ts ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/generated ./src/generated
 EXPOSE 5000
-CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
+CMD ["sh", "-c", "npx prisma db push && npm start"]
