@@ -310,3 +310,16 @@ docker compose exec redis sh -c "REDISCLI_AUTH=redis-password redis-cli FLUSHALL
 - No production deployment configuration yet
 - No password reset flow yet
 - No email notifications yet
+
+## Future Improvements
+
+- Add password reset and email verification flows.
+- Add email or in-app notification delivery outside the browser session.
+- Add file attachments for ticket conversations.
+- Add richer admin analytics and response-time reporting.
+- Add production deployment configuration with managed secrets.
+- Add end-to-end tests for the main user and admin workflows.
+
+## License
+
+This project is released under the MIT License.
