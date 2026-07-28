@@ -18,6 +18,8 @@ This project was built as a learning and portfolio project. I used Codex while b
 
 [![Watch the demo video](https://img.youtube.com/vi/qvB7RS1BusY/maxresdefault.jpg)](https://youtu.be/qvB7RS1BusY)
 
+▶ **Click the image above to play the demo video**
+
 ## Features
 
 - User registration and login with JWT authentication
